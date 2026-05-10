@@ -3,8 +3,15 @@
  * GovGuard™ — Auth0 Server Helpers
  * Wraps @auth0/nextjs-auth0 with GovGuard role extraction.
  */
-import { getSession, withApiAuthRequired } from "@auth0/nextjs-auth0";
+import {withApiAuthRequired } from "@auth0/nextjs-auth0";
 import type { NextRequest } from "next/server";
+
+
+import { Auth0Client } from "@auth0/nextjs-auth0/server";
+
+export const auth0 = new Auth0Client();
+
+const session = await auth0.getSession(); 
 
 export interface GovGuardUser {
   sub: string;
