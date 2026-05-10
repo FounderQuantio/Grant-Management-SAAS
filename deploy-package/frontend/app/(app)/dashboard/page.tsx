@@ -2,7 +2,7 @@
 import useSWR from "swr";
 import Link from "next/link";
 import { TrendingDown, ClipboardCheck, AlertTriangle, DollarSign,
-         ArrowRight, CheckCircle2, XCircle, BarChart3 } from "lucide-react";
+         ArrowRight, CheckCircle2, XCircle, BarChart3, FileText } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
