@@ -11,10 +11,18 @@ const nextConfig = {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         crypto: false,
+        http: false,
+        https: false,
+        zlib: false,
+        stream: false,
+        fs: false,
+        net: false,
+        tls: false,
       };
     }
     return config;
   },
+
   async headers() {
     return [
       {
