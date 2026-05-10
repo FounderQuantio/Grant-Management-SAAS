@@ -5,6 +5,16 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["@neondatabase/serverless"],
   },
+  // ADD THIS SECTION:
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        crypto: false,
+      };
+    }
+    return config;
+  },
   async headers() {
     return [
       {
