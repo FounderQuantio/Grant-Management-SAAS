@@ -1,11 +1,11 @@
-import { getSession } from "@auth0/nextjs-auth0";
+import { auth0 } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
+  const session = await auth0.getSession();
   if (!session?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
   const tenantId = session.user["https://govguard.app/tenant_id"] || "00000000-0000-0000-0000-000000000001";
 
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await getSession();
+  const session = await auth0.getSession();
   if (!session?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
   const tenantId = session.user["https://govguard.app/tenant_id"] || "00000000-0000-0000-0000-000000000001";
 

@@ -1,16 +1,10 @@
-"use client";
-import { useUser } from "@auth0/nextjs-auth0/client";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { auth0 } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { Shield, Lock, ChevronRight } from "lucide-react";
 
-export default function LoginPage() {
-  const { user, isLoading } = useUser();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (user) router.push("/dashboard");
-  }, [user, router]);
+export default async function LoginPage() {
+  const session = await auth0.getSession();
+  if (session?.user) redirect("/dashboard");
 
   return (
     <div className="min-h-screen bg-[#1F3864] flex items-center justify-center p-4">
