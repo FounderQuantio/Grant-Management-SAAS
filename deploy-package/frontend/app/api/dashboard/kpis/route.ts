@@ -2,7 +2,7 @@ import { auth0 } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { NextRequest } from "next/server";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const session = await auth0.getSession();

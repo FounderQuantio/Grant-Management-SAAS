@@ -1,4 +1,3 @@
-"use server";
 /**
  * GovGuard™ — Neon Serverless Database Client
  * Uses @neondatabase/serverless for edge-compatible PostgreSQL.
@@ -8,11 +7,23 @@ import { neon, neonConfig } from "@neondatabase/serverless";
 
 neonConfig.fetchConnectionCache = true;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL environment variable is not set");
+// Lazy singleton — neon() is only called on the first query, not at module load
+let _client: ReturnType<typeof neon> | undefined;
+function getClient() {
+  if (!_client) _client = neon(process.env.DATABASE_URL!);
+  return _client;
 }
 
-export const sql = neon(process.env.DATABASE_URL);
+type SqlFn = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<Record<string, unknown>[]>;
+
+export const sql: SqlFn = new Proxy(function () {} as unknown as SqlFn, {
+  apply(_t, thisArg, args) {
+    return Reflect.apply(getClient(), thisArg, args as Parameters<SqlFn>);
+  },
+  get(_t, prop) {
+    return (getClient() as unknown as Record<string, unknown>)[prop as string];
+  },
+});
 
 // ── Type-safe query helpers ───────────────────────────────────────────────
 
