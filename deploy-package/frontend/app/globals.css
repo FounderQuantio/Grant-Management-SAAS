@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* build-v2 */
 
 @layer base {
   :root {
