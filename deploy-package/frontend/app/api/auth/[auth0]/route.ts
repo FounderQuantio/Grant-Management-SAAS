@@ -1,6 +1,8 @@
 import { auth0 } from "@/lib/auth";
 import { NextRequest } from "next/server";
 
+export const runtime = "nodejs";
+
 export async function GET(request: NextRequest) {
   return auth0.middleware(request);
 }

@@ -7,7 +7,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/api/auth/:path*",
     "/dashboard/:path*",
     "/grants/:path*",
     "/fraud/:path*",
