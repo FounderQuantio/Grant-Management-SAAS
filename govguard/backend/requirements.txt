@@ -1,0 +1,53 @@
+# GovGuard™ Backend Dependencies
+# Python 3.12+
+
+# Web framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+starlette==0.40.0
+
+# Database
+sqlalchemy[asyncio]==2.0.35
+asyncpg==0.30.0
+alembic==1.13.3
+
+# Cache
+redis[asyncio]==5.1.1
+
+# Auth
+python-jose[cryptography]==3.3.0
+httpx==0.27.2
+
+# Config
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# Background jobs
+celery==5.4.0
+flower==2.0.1
+
+# AWS
+aioboto3==13.1.1
+boto3==1.35.32
+
+# ML
+scikit-learn==1.5.2
+numpy==2.1.1
+shap==0.46.0
+
+# Logging
+structlog==24.4.0
+
+# HTTP client
+httpx==0.27.2
+
+# Stripe
+stripe==11.0.0
+
+# PDF generation
+weasyprint==62.3
+
+# OpenSearch
+opensearch-py==2.7.1
+
+# Dev dependencies (install with: pip install -r requirements-dev.txt)

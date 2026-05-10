@@ -1,0 +1,13 @@
+.env
+.env.local
+.env.production
+.next/
+node_modules/
+*.log
+.DS_Store
+.vercel/
+dist/
+coverage/
+__pycache__/
+*.pyc
+.venv/

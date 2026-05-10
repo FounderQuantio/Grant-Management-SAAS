@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-navy:  #1F3864;
+    --brand-blue:  #2E75B6;
+    --brand-teal:  #1F6B75;
+    --brand-amber: #C55A11;
+    --brand-red:   #C00000;
+  }
+  body { @apply antialiased bg-gray-50 text-gray-900; }
+}

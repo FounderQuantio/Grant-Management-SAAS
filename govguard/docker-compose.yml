@@ -1,0 +1,151 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: govguard
+      POSTGRES_USER: govguard_app
+      POSTGRES_PASSWORD: devpass_change_in_prod
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./backend/database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U govguard_app -d govguard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ───────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── OpenSearch ──────────────────────────────────────────────────────────
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=GovGuard@Dev123
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q green"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── FastAPI Backend ─────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://govguard_app:devpass_change_in_prod@postgres:5432/govguard
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/2
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+      OPENSEARCH_URL: http://opensearch:9200
+      ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Celery Worker ───────────────────────────────────────────────────────
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.celery
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://govguard_app:devpass_change_in_prod@postgres:5432/govguard
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/2
+    volumes:
+      - ./backend:/app
+
+  # ── Celery Beat (Scheduler) ─────────────────────────────────────────────
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.celery
+    restart: unless-stopped
+    depends_on:
+      - redis
+    command: celery -A workers.celery_app.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    env_file: ./backend/.env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/2
+
+  # ── Flower (Celery Monitor) ─────────────────────────────────────────────
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.celery
+    restart: unless-stopped
+    depends_on:
+      - redis
+    command: celery -A workers.celery_app.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    env_file: ./backend/.env
+
+  # ── Next.js Frontend ────────────────────────────────────────────────────
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_COGNITO_DOMAIN: govguard.auth.us-gov-west-1.amazoncognito.com
+      NEXT_PUBLIC_COGNITO_CLIENT_ID: your-cognito-client-id
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: sh -c "npm install && npm run dev"
+
+volumes:
+  postgres_data:
+  redis_data:
+  opensearch_data:

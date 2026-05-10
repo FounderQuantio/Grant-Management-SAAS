@@ -1,0 +1,19 @@
+# GovGuard™ Celery Worker — Dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN groupadd --gid 1001 govguard && \
+    useradd --uid 1001 --gid govguard --shell /bin/sh --no-create-home govguard
+
+COPY --chown=govguard:govguard . .
+USER govguard
+
+CMD ["celery", "-A", "workers.celery_app.celery_app", "worker", \
+     "--loglevel=info", "--queues=payments,compliance,audit,sync", "--concurrency=4"]
