@@ -1,9 +1,19 @@
 import { auth0 } from "./lib/auth";
+import type { NextRequest } from "next/server";
 
-export const middleware = auth0.middleware;
+export async function middleware(request: NextRequest) {
+  return auth0.middleware(request);
+}
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico).*)",
+    "/api/auth/:path*",
+    "/dashboard/:path*",
+    "/grants/:path*",
+    "/fraud/:path*",
+    "/audit/:path*",
+    "/integrations/:path*",
+    "/settings/:path*",
+    "/admin/:path*",
   ],
 };
