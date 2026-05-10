@@ -1,5 +1,6 @@
 .env
 .env.local
+lib/.env.local
 .env.production
 .next/
 node_modules/
