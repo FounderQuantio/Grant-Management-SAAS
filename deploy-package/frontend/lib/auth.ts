@@ -1,17 +1,7 @@
-"use server";
-/**
- * GovGuard™ — Auth0 Server Helpers
- * Wraps @auth0/nextjs-auth0 with GovGuard role extraction.
- */
-import {withApiAuthRequired } from "@auth0/nextjs-auth0";
 import type { NextRequest } from "next/server";
-
-
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
 
 export const auth0 = new Auth0Client();
-
-const session = await auth0.getSession(); 
 
 export interface GovGuardUser {
   sub: string;
@@ -34,7 +24,7 @@ const ROLE_LEVELS: Record<string, number> = {
 
 export async function getCurrentUser(req: NextRequest): Promise<GovGuardUser | null> {
   try {
-    const session = await getSession();
+    const session = await auth0.getSession();
     if (!session?.user) return null;
     const user = session.user;
     return {
