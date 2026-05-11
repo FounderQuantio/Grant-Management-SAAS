@@ -1,7 +1,12 @@
 import type { NextRequest } from "next/server";
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
 
+const appBaseUrl =
+  process.env.APP_BASE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
+
 export const auth0 = new Auth0Client({
+  appBaseUrl,
   routes: {
     login: "/api/auth/login",
     logout: "/api/auth/logout",

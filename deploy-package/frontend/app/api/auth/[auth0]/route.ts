@@ -1,12 +1,16 @@
 import { auth0 } from "@/lib/auth";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET(request: NextRequest) {
-  return auth0.middleware(request);
+async function handler(request: NextRequest) {
+  try {
+    return await auth0.middleware(request);
+  } catch (err) {
+    console.error("[auth0] route handler error:", err);
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
 }
 
-export async function POST(request: NextRequest) {
-  return auth0.middleware(request);
-}
+export const GET = handler;
+export const POST = handler;
