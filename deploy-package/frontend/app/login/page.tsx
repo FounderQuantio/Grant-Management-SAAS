@@ -1,5 +1,7 @@
 import { auth0 } from "@/lib/auth";
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 import { Shield, Lock, ChevronRight } from "lucide-react";
 
 export default async function LoginPage() {
