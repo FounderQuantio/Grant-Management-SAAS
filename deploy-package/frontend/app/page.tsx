@@ -4,11 +4,12 @@ import { auth0 } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  let session = null;
   try {
-    const session = await auth0.getSession();
-    if (session?.user) redirect("/dashboard");
+    session = await auth0.getSession();
   } catch (err) {
     console.error("[auth0] getSession error on /:", err);
   }
+  if (session?.user) redirect("/dashboard");
   redirect("/login");
 }

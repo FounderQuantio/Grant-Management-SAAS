@@ -5,12 +5,13 @@ export const dynamic = "force-dynamic";
 import { Shield, Lock, ChevronRight } from "lucide-react";
 
 export default async function LoginPage() {
+  let session = null;
   try {
-    const session = await auth0.getSession();
-    if (session?.user) redirect("/dashboard");
+    session = await auth0.getSession();
   } catch (err) {
     console.error("[auth0] getSession error on /login:", err);
   }
+  if (session?.user) redirect("/dashboard");
 
   return (
     <div className="min-h-screen bg-[#1F3864] flex items-center justify-center p-4">
