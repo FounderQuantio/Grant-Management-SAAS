@@ -4,7 +4,13 @@ import { sql } from "@/lib/db";
 import AppShell from "./_shell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth0.getSession();
+  let session;
+  try {
+    session = await auth0.getSession();
+  } catch (err) {
+    console.error("[auth0] getSession error in app layout:", err);
+    redirect("/login");
+  }
   if (!session?.user) redirect("/api/auth/login");
 
   const user = session.user;

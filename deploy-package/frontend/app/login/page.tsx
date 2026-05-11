@@ -3,8 +3,12 @@ import { redirect } from "next/navigation";
 import { Shield, Lock, ChevronRight } from "lucide-react";
 
 export default async function LoginPage() {
-  const session = await auth0.getSession();
-  if (session?.user) redirect("/dashboard");
+  try {
+    const session = await auth0.getSession();
+    if (session?.user) redirect("/dashboard");
+  } catch (err) {
+    console.error("[auth0] getSession error on /login:", err);
+  }
 
   return (
     <div className="min-h-screen bg-[#1F3864] flex items-center justify-center p-4">
