@@ -131,14 +131,14 @@ class Transaction(Base):
         {"postgresql_partition_by": "RANGE (tx_date)"},
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     grant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("grants.id"), nullable=False)
     vendor_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("vendors.id"), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     invoice_ref: Mapped[str] = mapped_column(String(255), nullable=False)
     cost_category: Mapped[str] = mapped_column(String(100), nullable=False)
-    tx_date: Mapped[date] = mapped_column(Date, nullable=False)
+    tx_date: Mapped[date] = mapped_column(Date, primary_key=True, nullable=False)
     risk_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
     flag_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     flag_reason: Mapped[Optional[str]] = mapped_column(Text)
@@ -216,7 +216,7 @@ class AuditEvent(Base):
         {"postgresql_partition_by": "RANGE (ts)"},
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     action: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -226,7 +226,7 @@ class AuditEvent(Base):
     new_value_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     ip_address: Mapped[Optional[str]] = mapped_column(String(45))
     user_agent_hash: Mapped[Optional[str]] = mapped_column(String(64))
-    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True, server_default=func.now(), nullable=False)
 
 
 # ── Audit Findings ─────────────────────────────────────────────────────────
