@@ -149,6 +149,34 @@ def require_role(*roles: str):
     return _check
 
 
+async def get_current_user_or_service(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> UserContext:
+    """Accept Cognito JWT or Vercel service-to-service requests."""
+    service_secret = request.headers.get("X-Service-Secret")
+    if service_secret:
+        if service_secret != settings.SERVICE_SECRET:
+            raise AuthenticationError("Invalid service secret")
+        tenant_id = request.headers.get("X-Tenant-ID")
+        user_id = request.headers.get("X-User-ID", "00000000-0000-0000-0000-000000000001")
+        role = request.headers.get("X-User-Role", "finance_staff")
+        if not tenant_id:
+            raise AuthenticationError("Missing X-Tenant-ID header")
+        svc_user = UserContext(
+            id=UUID(user_id),
+            tenant_id=UUID(tenant_id),
+            cognito_sub="service",
+            role=role,
+            display_name="Service",
+            email_hash="",
+        )
+        request.state.user = svc_user
+        request.state.tenant_id = tenant_id
+        return svc_user
+    return await get_current_user(request, credentials)
+
+
 # Shorthand dependencies
 RequireSystemAdmin = Depends(require_role("system_admin"))
 RequireAgencyOfficer = Depends(require_role("agency_officer"))

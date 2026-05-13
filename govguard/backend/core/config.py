@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     ML_MODEL_VERSION: str = "isolation_forest_v1.0.0"
     ML_FRAUD_THRESHOLD: float = 75.0
 
+    # Service-to-service auth (Vercel → Railway)
+    SERVICE_SECRET: str = "change-me-set-in-railway-env"
+
     # JWT
     JWT_ALGORITHM: str = "RS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
