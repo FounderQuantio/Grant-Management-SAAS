@@ -9,8 +9,11 @@ redis_client: Optional[aioredis.Redis] = None
 
 async def init_redis() -> None:
     global redis_client
-    redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
-    await redis_client.ping()
+    try:
+        redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+        await redis_client.ping()
+    except Exception:
+        redis_client = None
 
 
 async def close_redis() -> None:
