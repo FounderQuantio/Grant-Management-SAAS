@@ -90,7 +90,7 @@ export default function HomePage() {
             <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </a>
           <a
-            href="/api/auth/login"
+            href="/api/auth/login?returnTo=/dashboard"
             className="flex items-center gap-2 border-2 border-white/30 hover:border-white/60 text-white font-semibold px-7 py-3.5 rounded-xl transition-all"
           >
             <Lock className="w-4 h-4" />
