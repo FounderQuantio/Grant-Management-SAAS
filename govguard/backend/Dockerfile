@@ -28,6 +28,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 RUN groupadd --gid 1001 govguard && \
     useradd --uid 1001 --gid govguard --shell /bin/sh --no-create-home govguard
 
+ARG CACHEBUST=1
 COPY --chown=govguard:govguard . .
 
 USER govguard
