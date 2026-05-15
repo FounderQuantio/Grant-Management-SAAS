@@ -1,4 +1,3 @@
-import { auth0 } from "@/lib/auth";
 import {
   Shield,
   CheckCircle,
@@ -9,8 +8,6 @@ import {
   ChevronRight,
   UserPlus,
 } from "lucide-react";
-
-export const dynamic = "force-dynamic";
 
 const features = [
   {
@@ -39,15 +36,7 @@ const features = [
   },
 ];
 
-export default async function HomePage() {
-  let session = null;
-  try {
-    session = await auth0.getSession();
-  } catch (err) {
-    console.error("[auth0] getSession error on /:", err);
-  }
-  const isSignedIn = !!session?.user;
-
+export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#1F3864] flex flex-col">
       {/* Nav */}
@@ -59,29 +48,18 @@ export default async function HomePage() {
           <span className="text-white text-xl font-bold tracking-tight">GovGuard™</span>
         </div>
         <div className="flex items-center gap-3">
-          {isSignedIn ? (
-            <a
-              href="/dashboard"
-              className="bg-white text-[#1F3864] hover:bg-blue-50 text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors shadow-sm"
-            >
-              Go to Dashboard
-            </a>
-          ) : (
-            <>
-              <a
-                href="/login"
-                className="text-blue-200 hover:text-white text-sm font-medium transition-colors px-4 py-2"
-              >
-                Sign In
-              </a>
-              <a
-                href="/api/auth/login?screen_hint=signup"
-                className="bg-white text-[#1F3864] hover:bg-blue-50 text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors shadow-sm"
-              >
-                Get Started
-              </a>
-            </>
-          )}
+          <a
+            href="/login"
+            className="text-blue-200 hover:text-white text-sm font-medium transition-colors px-4 py-2"
+          >
+            Sign In
+          </a>
+          <a
+            href="/api/auth/login?screen_hint=signup"
+            className="bg-white text-[#1F3864] hover:bg-blue-50 text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors shadow-sm"
+          >
+            Get Started
+          </a>
         </div>
       </nav>
 
@@ -103,17 +81,6 @@ export default async function HomePage() {
         </p>
 
         <div className="flex items-center justify-center gap-4 flex-wrap">
-          {isSignedIn ? (
-            <a
-              href="/dashboard"
-              className="flex items-center gap-2 bg-white text-[#1F3864] hover:bg-blue-50 font-semibold px-7 py-3.5 rounded-xl transition-all shadow-lg hover:shadow-xl group"
-            >
-              <BarChart3 className="w-4 h-4" />
-              Go to Dashboard
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </a>
-          ) : (
-          <>
           <a
             href="/api/auth/login?screen_hint=signup"
             className="flex items-center gap-2 bg-white text-[#1F3864] hover:bg-blue-50 font-semibold px-7 py-3.5 rounded-xl transition-all shadow-lg hover:shadow-xl group"
@@ -129,8 +96,6 @@ export default async function HomePage() {
             <Lock className="w-4 h-4" />
             Sign In
           </a>
-          </>
-          )}
         </div>
 
         {/* Feature Cards */}
