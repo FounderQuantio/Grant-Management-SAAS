@@ -4,25 +4,37 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 async function handler(request: NextRequest) {
-  // Derive appBaseUrl from the incoming request so that the Auth0 callback
-  // URL always matches the domain the user is actually on (works for any
-  // Vercel preview URL without needing them all registered in Auth0).
-  const appBaseUrl = request.nextUrl.origin;
+  // Use forwarded headers so we get the real public URL, not Vercel's internal one
+  const proto = request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "");
+  const host = request.headers.get("x-forwarded-host") ?? request.nextUrl.host;
+  const appBaseUrl = `${proto}://${host}`;
 
-  const client = new Auth0Client({
-    appBaseUrl,
-    routes: {
-      login: "/api/auth/login",
-      logout: "/api/auth/logout",
-      callback: "/api/auth/callback",
-    },
-  });
+  console.log("[auth0] handler", request.nextUrl.pathname, { appBaseUrl });
 
   try {
-    return await client.middleware(request);
+    const client = new Auth0Client({
+      appBaseUrl,
+      routes: {
+        login: "/api/auth/login",
+        logout: "/api/auth/logout",
+        callback: "/api/auth/callback",
+      },
+    });
+
+    const res = await client.middleware(request);
+    console.log("[auth0] response status:", res.status, "location:", res.headers.get("location"));
+
+    if (res.status >= 400) {
+      const body = await res.clone().text().catch(() => "");
+      console.error("[auth0] error response body:", body.slice(0, 500));
+      // Surface the error visibly instead of silently failing
+      return NextResponse.json({ error: "Auth error", status: res.status, body: body.slice(0, 500) }, { status: res.status });
+    }
+
+    return res;
   } catch (err) {
     console.error("[auth0] thrown error:", err);
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
 
