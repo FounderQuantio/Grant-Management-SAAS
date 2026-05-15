@@ -2,6 +2,7 @@
  * GovGuard™ — Railway Backend Proxy Helper
  * Forwards authenticated requests from Next.js API routes to the FastAPI backend.
  */
+import { type NextRequest } from "next/server";
 import { auth0 } from "@/lib/auth";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
@@ -10,13 +11,14 @@ const SERVICE_SECRET = process.env.SERVICE_SECRET || "";
 export interface BackendProxyOptions {
   method?: string;
   body?: unknown;
+  req?: NextRequest;
 }
 
 export async function backendProxy(
   path: string,
   options: BackendProxyOptions = {}
 ): Promise<Response> {
-  const session = await auth0.getSession();
+  const session = await auth0.getSession(options.req);
   if (!session?.user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
