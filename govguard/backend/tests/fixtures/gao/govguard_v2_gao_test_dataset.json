@@ -1,0 +1,3067 @@
+{
+  "metadata": {
+    "platform": "GovGuard v2",
+    "version": "1.0.0",
+    "purpose": "Synthetic test dataset for GovGuard v2, strictly aligned to GAO_AI_SaaS_Problem_Solution_Dataset.md.",
+    "source_dataset": "GAO_AI_SaaS_Problem_Solution_Dataset.md",
+    "modules": {
+      "M1": "Real-time anomaly detection",
+      "M2": "Fraud detection engine",
+      "M3": "Grant compliance monitoring",
+      "M4": "Internal control automation",
+      "M5": "Cross-entity financial intelligence",
+      "M6": "Predictive risk analytics"
+    },
+    "total_scenarios": 70,
+    "categories_covered": [
+      "C1 - Federal Financial Inefficiency",
+      "C2 - Fragmentation, Overlap, and Duplication",
+      "C3 - Execution Gap in Oversight",
+      "C4 - Structural Blind Spots in High-Risk Programs",
+      "C5 - Integrated Proactive Fraud Prevention"
+    ],
+    "test_type_distribution": {
+      "Integration": 24,
+      "End-to-End": 12,
+      "AI/Model Validation": 24,
+      "Unit": 10
+    },
+    "feature_coverage": {
+      "M1": 16,
+      "M2": 25,
+      "M4": 15,
+      "M3": 14,
+      "M5": 34,
+      "M6": 27
+    }
+  },
+  "scenarios": [
+    {
+      "test_case_id": "GG-TC-001",
+      "title": "Medicare FFS duplicate billing across MACs",
+      "gao_reference": {
+        "id": "C1-E1",
+        "title": "Medicare Fee-for-Service Improper Payments",
+        "section": "Category 1: Federal Financial Inefficiency",
+        "mapping": "Static pre-payment edits miss duplicate Part A/B claims processed by different MACs; scenario validates pre-payment ML scoring against provider history and peer billing patterns."
+      },
+      "gao_problem_category": "Improper payment / duplicate billing",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        }
+      ],
+      "scenario_description": "A Medicare Part B provider (NPI 1234567890) submits 47 CPT 99214 claims for beneficiary HIC 123-45-6789A across 9 days; the same beneficiary received an inpatient stay billed via Part A by a different MAC. Static edits passed; peer-group billing density for this CPT/provider sits in the 99.7th percentile.",
+      "synthetic_input_data": {
+        "provider_npi": "1234567890",
+        "mac_a_claims": [
+          {
+            "claim_id": "A-2026-00471",
+            "cpt": "99214",
+            "dos": "2026-03-02",
+            "amount_usd": 187.45,
+            "beneficiary_hic": "123-45-6789A"
+          },
+          {
+            "claim_id": "A-2026-00472",
+            "cpt": "99214",
+            "dos": "2026-03-03",
+            "amount_usd": 187.45,
+            "beneficiary_hic": "123-45-6789A"
+          },
+          {
+            "claim_id": "A-2026-00488",
+            "cpt": "99214",
+            "dos": "2026-03-04",
+            "amount_usd": 187.45,
+            "beneficiary_hic": "123-45-6789A"
+          }
+        ],
+        "mac_b_inpatient_overlap": {
+          "claim_id": "B-2026-IP-3391",
+          "drg": "871",
+          "admit": "2026-03-02",
+          "discharge": "2026-03-05"
+        },
+        "peer_cohort_99214_per_week_p99": 18,
+        "provider_99214_per_week": 47,
+        "documentation_completeness_score": 0.41
+      },
+      "triggered_workflow": "M1 anomaly detection -> M2 fraud engine cross-claim graph -> M4 pre-payment hold -> reviewer queue",
+      "expected_system_behavior": "M1 flags peer-cohort outlier; M2 detects Part A/B service overlap for the same HIC on overlapping DOS; M4 applies a pre-payment hold and routes to clinical review with documentation-NLP score.",
+      "expected_output": {
+        "risk_score": 0.93,
+        "alert_type": "PRE_PAYMENT_DUPLICATE_OVERLAP",
+        "anomaly_class": "Peer-cohort velocity + Part A/B service overlap",
+        "compliance_violation": "42 CFR 424.535 documentation insufficiency",
+        "recommended_action": "Hold claims A-2026-00471/472/488; request medical records; refer to UPIC"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='PRE_PAYMENT_DUPLICATE_OVERLAP', risk_score within ±0.05 of 0.93, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-002",
+      "title": "Cross-state Medicaid duplicate enrollment",
+      "gao_reference": {
+        "id": "C1-E2",
+        "title": "Medicaid Eligibility Errors and Cross-State Duplication",
+        "section": "Category 1",
+        "mapping": "Beneficiary enrolled simultaneously in multiple state MMIS with no real-time interstate ledger; validates federated eligibility matching."
+      },
+      "gao_problem_category": "Eligibility duplication",
+      "features_under_test": [
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "A beneficiary is concurrently enrolled in TX Medicaid (effective 2025-11-01) and FL Medicaid (effective 2026-01-15) with the same SSN and DOB; IRS wage data shows W-2 earnings in FL only.",
+      "synthetic_input_data": {
+        "beneficiary_ssn_hash": "sha256:9f2a...c41",
+        "dob": "1984-07-22",
+        "tx_medicaid": {
+          "case_id": "TX-MCD-552117",
+          "status": "ACTIVE",
+          "effective": "2025-11-01"
+        },
+        "fl_medicaid": {
+          "case_id": "FL-MCD-883204",
+          "status": "ACTIVE",
+          "effective": "2026-01-15"
+        },
+        "irs_w2_state_code": "FL",
+        "ssa_address_history_state": "FL",
+        "monthly_paid_per_state_usd": 612.0
+      },
+      "triggered_workflow": "M5 federated identity match -> M3 eligibility recertification trigger -> M4 payment hold on lower-confidence state",
+      "expected_system_behavior": "M5 produces a high-confidence cross-state match; M3 opens recertification cases in both states; M4 holds capitation payment in the state with weaker presence signals (TX).",
+      "expected_output": {
+        "risk_score": 0.88,
+        "alert_type": "CROSS_STATE_DUPLICATE_ENROLLMENT",
+        "anomaly_class": "Duplicate active eligibility",
+        "compliance_violation": "42 CFR 435.956 residency verification",
+        "recommended_action": "Suspend TX capitation; cross-notify TX HHSC and FL AHCA"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='CROSS_STATE_DUPLICATE_ENROLLMENT', risk_score within ±0.05 of 0.88, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-003",
+      "title": "Pandemic UI synthetic-identity ring across states",
+      "gao_reference": {
+        "id": "C1-E3",
+        "title": "Pandemic Unemployment Insurance Fraud",
+        "section": "Category 1",
+        "mapping": "Synthetic identities filing UI claims across multiple states; validates identity-graph + device-fingerprint correlation."
+      },
+      "gao_problem_category": "Identity fraud / multi-state ring",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Eighteen UI claims filed within 36 hours across CA, NV, AZ, and GA from 4 device fingerprints and 2 residential-proxy IP ASNs; claimant SSNs include 3 valid SSNs combined with fabricated names and DOBs (synthetic-identity pattern).",
+      "synthetic_input_data": {
+        "claims_count": 18,
+        "states": [
+          "CA",
+          "NV",
+          "AZ",
+          "GA"
+        ],
+        "unique_device_fingerprints": 4,
+        "unique_ipv4_asns": 2,
+        "ipv4_asn_reputations": [
+          "residential_proxy",
+          "residential_proxy"
+        ],
+        "ecbsv_ssn_name_match_failures": 11,
+        "behavioral_typing_cadence_zscore": 4.7,
+        "claim_amount_total_usd": 142800.0
+      },
+      "triggered_workflow": "M2 identity-graph clustering -> M5 cross-state correlation -> M6 synthetic-identity score -> M4 freeze",
+      "expected_system_behavior": "M2 builds a tight cluster across 18 claims; M5 confirms multi-state overlap; M6 returns synthetic-identity probability > 0.9; M4 freezes disbursement and queues for state UI integrity units.",
+      "expected_output": {
+        "risk_score": 0.96,
+        "alert_type": "SYNTHETIC_ID_RING_MULTI_STATE",
+        "anomaly_class": "Identity-graph cluster",
+        "compliance_violation": "State UI verification (e.g., CA UI Code §1257) + eCBSV mismatch",
+        "recommended_action": "Freeze all 18 claims; refer to DOL OIG and state UI fraud units"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='SYNTHETIC_ID_RING_MULTI_STATE', risk_score within ±0.05 of 0.96, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-004",
+      "title": "PPP fictitious-business loan cluster",
+      "gao_reference": {
+        "id": "C1-E4",
+        "title": "PPP and EIDL Loan Fraud",
+        "section": "Category 1",
+        "mapping": "Fictitious businesses with shared banking ABA/account and address; validates pre-disbursement graph analytics against IRS/state/FinCEN signals."
+      },
+      "gao_problem_category": "Loan fraud / shell entities",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Six PPP applications submitted by entities formed within 30 days, all listing the same UPS Store address in Miami, identical average monthly payroll, and direct-deposit accounts at one credit union sharing the last 6 digits of the routing path.",
+      "synthetic_input_data": {
+        "applications": [
+          {
+            "ein": "82-3551101",
+            "entity": "Sunray Logistics LLC",
+            "address": "3401 NW 9th Ave #142",
+            "monthly_payroll_usd": 47833.33
+          },
+          {
+            "ein": "82-3551109",
+            "entity": "Sunray Couriers LLC",
+            "address": "3401 NW 9th Ave #149",
+            "monthly_payroll_usd": 47833.33
+          },
+          {
+            "ein": "82-3551117",
+            "entity": "Sunray Express LLC",
+            "address": "3401 NW 9th Ave #151",
+            "monthly_payroll_usd": 47833.33
+          },
+          {
+            "ein": "82-3551125",
+            "entity": "Sunray Freight LLC",
+            "address": "3401 NW 9th Ave #157",
+            "monthly_payroll_usd": 47833.33
+          },
+          {
+            "ein": "82-3551133",
+            "entity": "Sunray Cargo LLC",
+            "address": "3401 NW 9th Ave #161",
+            "monthly_payroll_usd": 47833.33
+          },
+          {
+            "ein": "82-3551141",
+            "entity": "Sunray Shipping LLC",
+            "address": "3401 NW 9th Ave #163",
+            "monthly_payroll_usd": 47833.33
+          }
+        ],
+        "irs_941_filings_prior_year": 0,
+        "state_registration_age_days_max": 28,
+        "usps_dpv_address_type": "CMRA",
+        "shared_aba_last6": "267084"
+      },
+      "triggered_workflow": "M4 pre-disbursement gate -> M5 entity graph -> M2 cluster score -> hold all 6",
+      "expected_system_behavior": "M4 fails IRS-941 existence check; M5 graph links 6 EINs via address + ABA; M2 returns cluster fraud probability > 0.95; all six disbursements held.",
+      "expected_output": {
+        "risk_score": 0.97,
+        "alert_type": "SHELL_ENTITY_CLUSTER",
+        "anomaly_class": "Beneficial-owner / address / banking concentration",
+        "compliance_violation": "15 USC 636(a)(36) eligibility + SBA SOP 50-10 verification",
+        "recommended_action": "Reject all 6 applications; refer to SBA OIG"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='SHELL_ENTITY_CLUSTER', risk_score within ±0.05 of 0.97, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-005",
+      "title": "ERC promoter-cluster pre-refund detection",
+      "gao_reference": {
+        "id": "C1-E5",
+        "title": "Employee Retention Credit (ERC) Tax Fraud",
+        "section": "Category 1",
+        "mapping": "Aggressive ERC promoters file mass amended 941-X with implausible eligibility; validates pre-refund ML + EFIN cluster detection."
+      },
+      "gao_problem_category": "Tax credit fraud / promoter scheme",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "A single EFIN submits 1,142 Form 941-X amendments claiming ERC averaging $238k per filer; 87% claim full government-order suspension; industry-revenue benchmarks (BEA NAICS 722) show median <14% revenue decline in 2021Q2.",
+      "synthetic_input_data": {
+        "preparer_efin": "P00-512844",
+        "amended_returns_count": 1142,
+        "avg_claim_usd": 238000.0,
+        "pct_full_suspension_claim": 0.87,
+        "naics": "722511",
+        "benchmark_revenue_decline_median": 0.14,
+        "claimed_revenue_decline_avg": 0.62,
+        "narrative_jaccard_similarity": 0.91
+      },
+      "triggered_workflow": "M2 promoter-cluster detection -> M6 implausibility score -> M4 pre-refund freeze cohort",
+      "expected_system_behavior": "M2 detects EFIN-level clustering; M6 scores cohort against BEA/Census benchmarks; M4 places cohort-wide pre-refund hold pending documentation.",
+      "expected_output": {
+        "risk_score": 0.94,
+        "alert_type": "PROMOTER_DRIVEN_ERC_COHORT",
+        "anomaly_class": "Preparer-cluster + benchmark-implausibility",
+        "compliance_violation": "IRC §3134 eligibility; preparer 26 USC §6694",
+        "recommended_action": "Freeze cohort refunds; open CI promoter investigation"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='PROMOTER_DRIVEN_ERC_COHORT', risk_score within ±0.05 of 0.94, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-006",
+      "title": "SSDI overpayment from unreported earnings",
+      "gao_reference": {
+        "id": "C1-E6",
+        "title": "Social Security Disability Insurance Overpayments",
+        "section": "Category 1",
+        "mapping": "Unreported earnings above SGA threshold; validates continuous wage monitoring + CDR prioritization."
+      },
+      "gao_problem_category": "Overpayment / unreported income",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "An SSDI recipient receives $1,538/month while IRS quarterly wage data shows W-2 income averaging $4,320/month for 7 consecutive months — well above SGA ($1,620/month, 2026).",
+      "synthetic_input_data": {
+        "beneficiary_id_hash": "sha256:b71d...e09",
+        "monthly_benefit_usd": 1538.0,
+        "irs_w2_monthly_avg_last7mo_usd": 4320.0,
+        "sga_threshold_2026_usd": 1620.0,
+        "cdr_last_completed": "2022-09-12",
+        "tickets_to_work_active": false
+      },
+      "triggered_workflow": "M1 earnings-vs-benefit anomaly -> M6 CDR priority score -> M4 case open",
+      "expected_system_behavior": "M1 flags 7-month wage trend above SGA; M6 assigns high CDR priority; M4 opens overpayment case and projects recoupment.",
+      "expected_output": {
+        "risk_score": 0.86,
+        "alert_type": "SGA_BREACH_UNDETECTED",
+        "anomaly_class": "Sustained income above SGA",
+        "compliance_violation": "20 CFR 404.1574 / 416.974",
+        "recommended_action": "Open CDR; estimated overpayment $18,892"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='SGA_BREACH_UNDETECTED', risk_score within ±0.05 of 0.86, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-007",
+      "title": "EITC qualifying-child cross-claim",
+      "gao_reference": {
+        "id": "C1-E7",
+        "title": "Earned Income Tax Credit Improper Payments",
+        "section": "Category 1",
+        "mapping": "Same SSN claimed as qualifying child on two unrelated returns; validates SSA dependency cross-match pre-refund."
+      },
+      "gao_problem_category": "Tax credit improper payment",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        }
+      ],
+      "scenario_description": "Two unrelated taxpayers (different filing addresses, no marital history) each claim the same child SSN as a qualifying child for EITC; SSA dependency file links the child to neither.",
+      "synthetic_input_data": {
+        "child_ssn_hash": "sha256:33fc...a02",
+        "filer_a": {
+          "return_id": "TR-2026-A-77104",
+          "filing_status": "HoH",
+          "eitc_amount_usd": 6128.0
+        },
+        "filer_b": {
+          "return_id": "TR-2026-B-19388",
+          "filing_status": "HoH",
+          "eitc_amount_usd": 6128.0
+        },
+        "ssa_dependency_match": false,
+        "school_enrollment_state": "NC",
+        "filer_a_state": "AZ",
+        "filer_b_state": "OH"
+      },
+      "triggered_workflow": "M2 cross-return SSN reuse -> M4 soft-block both returns pre-refund",
+      "expected_system_behavior": "M2 detects same-child cross-claim; M4 issues soft-block with EITC due-diligence documentation request to both filers.",
+      "expected_output": {
+        "risk_score": 0.82,
+        "alert_type": "EITC_CROSS_CLAIM",
+        "anomaly_class": "Duplicate qualifying-child SSN",
+        "compliance_violation": "IRC §32(c)(3) qualifying child",
+        "recommended_action": "Soft-block; issue Form 886-H-EIC requests"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='EITC_CROSS_CLAIM', risk_score within ±0.05 of 0.82, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-008",
+      "title": "SNAP retailer trafficking detection at POS",
+      "gao_reference": {
+        "id": "C1-E8",
+        "title": "SNAP Retailer Trafficking",
+        "section": "Category 1",
+        "mapping": "Even-dollar EBT transactions, high velocity, repeat customer overlap; validates real-time POS anomaly scoring."
+      },
+      "gao_problem_category": "Benefit trafficking",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "A small convenience store (FNS#0049771, 1.2 registers) shows 312 EBT transactions in 14 days at even-dollar amounts ($40, $60, $80), with 73% of transactions from 14 repeat households whose households cluster by IP-geolocated benefit applications.",
+      "synthetic_input_data": {
+        "fns_retailer_id": "0049771",
+        "txn_count_14d": 312,
+        "even_dollar_pct": 0.94,
+        "repeat_household_concentration_pct": 0.73,
+        "avg_basket_size": 1.0,
+        "ebt_volume_usd": 18420.0,
+        "peer_cohort_volume_p95": 4900.0
+      },
+      "triggered_workflow": "M1 transaction anomaly -> M5 customer-overlap graph -> ALERT generation",
+      "expected_system_behavior": "M1 surfaces even-dollar + velocity anomaly; M5 confirms customer-overlap cluster; ALERT case generated for FNS investigation.",
+      "expected_output": {
+        "risk_score": 0.89,
+        "alert_type": "SNAP_TRAFFICKING_SUSPECTED",
+        "anomaly_class": "Even-dollar + velocity + customer overlap",
+        "compliance_violation": "7 CFR 278.6 retailer trafficking",
+        "recommended_action": "Open ALERT investigation; consider TRO of EBT eligibility"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='SNAP_TRAFFICKING_SUSPECTED', risk_score within ±0.05 of 0.89, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-009",
+      "title": "Travel card weekend personal misuse",
+      "gao_reference": {
+        "id": "C1-E9",
+        "title": "Federal Employee Travel Card Abuse",
+        "section": "Category 1",
+        "mapping": "Cardholder uses travel card off-TDY for personal MCCs; validates real-time transaction scoring against travel authorization."
+      },
+      "gao_problem_category": "Procurement / card misuse",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        }
+      ],
+      "scenario_description": "GSA SmartPay travel cardholder posts $1,847 across 9 transactions on a Saturday/Sunday at MCC 5921 (liquor) and MCC 7995 (gambling) in Las Vegas while no travel authorization is active.",
+      "synthetic_input_data": {
+        "cardholder_id": "GS-TC-118-44021",
+        "auth_active": false,
+        "transactions": [
+          {
+            "mcc": "5921",
+            "amount_usd": 412.3,
+            "city": "Las Vegas",
+            "ts": "2026-04-11T22:14:00Z"
+          },
+          {
+            "mcc": "7995",
+            "amount_usd": 800.0,
+            "city": "Las Vegas",
+            "ts": "2026-04-11T23:51:00Z"
+          },
+          {
+            "mcc": "5921",
+            "amount_usd": 215.0,
+            "city": "Las Vegas",
+            "ts": "2026-04-12T18:02:00Z"
+          }
+        ],
+        "approved_mcc_whitelist": [
+          "3000-3299",
+          "3501-3999",
+          "4111",
+          "5811",
+          "5812"
+        ]
+      },
+      "triggered_workflow": "M1 off-policy MCC + geo -> M4 supervisor alert within 24h",
+      "expected_system_behavior": "M1 detects MCC violations with no active travel auth; M4 routes to supervisor and AOPC with 24h SLA.",
+      "expected_output": {
+        "risk_score": 0.91,
+        "alert_type": "PCARD_OFF_POLICY_MISUSE",
+        "anomaly_class": "Prohibited MCC + no travel auth",
+        "compliance_violation": "FTR §301-51 / agency travel card policy",
+        "recommended_action": "Suspend card; refer to AOPC and HR"
+      },
+      "test_type": "Unit",
+      "pass_fail_criteria": "PASS if alert_type='PCARD_OFF_POLICY_MISUSE', risk_score within ±0.05 of 0.91, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-010",
+      "title": "Cross-ERP duplicate invoice (DEAMS vs GFEBS)",
+      "gao_reference": {
+        "id": "C1-E10",
+        "title": "Duplicate Vendor Payments in DoD and Civilian Agencies",
+        "section": "Category 1",
+        "mapping": "Same invoice submitted under variant PO numbers in two ERPs; validates fuzzy fingerprinting + pre-payment block."
+      },
+      "gao_problem_category": "Procurement / duplicate payment",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Vendor 'Atlantic Systems Inc.' submits invoice #INV-77241 ($412,887.50) to DEAMS under PO F8B-2025-1144, and the same invoice with line items split into 3 sub-invoices to GFEBS under PO W912DR-2025-0888 the next day.",
+      "synthetic_input_data": {
+        "vendor_uei": "ATLSYS-UEI-447112",
+        "deams_invoice": {
+          "inv_no": "INV-77241",
+          "po": "F8B-2025-1144",
+          "amount_usd": 412887.5,
+          "date": "2026-02-10"
+        },
+        "gfebs_invoices": [
+          {
+            "inv_no": "INV-77241-A",
+            "po": "W912DR-2025-0888",
+            "amount_usd": 142887.5,
+            "date": "2026-02-11"
+          },
+          {
+            "inv_no": "INV-77241-B",
+            "po": "W912DR-2025-0888",
+            "amount_usd": 137000.0,
+            "date": "2026-02-11"
+          },
+          {
+            "inv_no": "INV-77241-C",
+            "po": "W912DR-2025-0888",
+            "amount_usd": 133000.0,
+            "date": "2026-02-11"
+          }
+        ],
+        "line_item_embedding_cosine": 0.97
+      },
+      "triggered_workflow": "M5 cross-ERP invoice fingerprint -> M1 fuzzy duplicate match -> M4 pre-payment block",
+      "expected_system_behavior": "M5 fingerprints invoices across DEAMS and GFEBS; M1 returns high-similarity match despite split lines; M4 blocks GFEBS payment.",
+      "expected_output": {
+        "risk_score": 0.92,
+        "alert_type": "CROSS_ERP_DUPLICATE_INVOICE",
+        "anomaly_class": "Fuzzy duplicate w/ line-split obfuscation",
+        "compliance_violation": "FAR 32.905 / Prompt Payment Act duplicates",
+        "recommended_action": "Hold GFEBS payments; recover if disbursed"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='CROSS_ERP_DUPLICATE_INVOICE', risk_score within ±0.05 of 0.92, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-011",
+      "title": "Ghost employee on grant-funded payroll",
+      "gao_reference": {
+        "id": "C1-E11",
+        "title": "Phantom or 'Ghost' Employees in Federal Payroll",
+        "section": "Category 1",
+        "mapping": "Deceased employee still on direct deposit; validates HR-payroll-DMF continuous reconciliation."
+      },
+      "gao_problem_category": "Payroll fraud",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        },
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        }
+      ],
+      "scenario_description": "Employee on NIH R01 grant payroll continues to receive bi-weekly deposits of $3,840 for 4 cycles after a state vital-records death event; T&A submitted by a supervisor account that also submits for 22 other employees.",
+      "synthetic_input_data": {
+        "employee_id_hash": "sha256:9a08...b14",
+        "grant_id": "5R01CA199877-04",
+        "deposits_post_death": 4,
+        "deposit_amount_usd": 3840.0,
+        "dmf_record_match_confidence": 0.99,
+        "supervisor_account_span": 23,
+        "t_and_a_pattern_zscore": 3.2
+      },
+      "triggered_workflow": "M1 DMF mismatch -> M3 grant cost monitor -> M4 payroll hold",
+      "expected_system_behavior": "M1 reconciles payroll roster with DMF and flags continued pay; M3 flags unallowable salary charge to NIH grant; M4 halts next deposit and opens supervisor review.",
+      "expected_output": {
+        "risk_score": 0.95,
+        "alert_type": "GHOST_EMPLOYEE_DMF_MATCH",
+        "anomaly_class": "Post-death payroll continuation",
+        "compliance_violation": "2 CFR 200.430 (compensation - personal services)",
+        "recommended_action": "Stop payroll; recover $15,360; refer to OIG; review supervisor's 22 reports"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='GHOST_EMPLOYEE_DMF_MATCH', risk_score within ±0.05 of 0.95, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-012",
+      "title": "Disaster Duplication-of-Benefits across FEMA, SBA, NFIP",
+      "gao_reference": {
+        "id": "C1-E14",
+        "title": "Disaster Assistance Duplication",
+        "section": "Category 1",
+        "mapping": "Survivor receives FEMA IHP, SBA disaster loan, and NFIP payout for the same loss; validates federated DOB engine."
+      },
+      "gao_problem_category": "Duplicate benefits",
+      "features_under_test": [
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Hurricane survivor receives $33,000 FEMA IHP, $185,000 SBA disaster loan, and $172,000 NFIP claim for the same property; Stafford Act DOB worksheet not reconciled at disbursement.",
+      "synthetic_input_data": {
+        "survivor_id_hash": "sha256:71cd...44e",
+        "property_id": "FEMA-PROP-2026-FL-1199",
+        "fema_ihp_usd": 33000.0,
+        "sba_loan_usd": 185000.0,
+        "nfip_payout_usd": 172000.0,
+        "documented_loss_estimate_usd": 318000.0,
+        "expected_duplication_usd": 72000.0
+      },
+      "triggered_workflow": "M5 cross-program survivor match -> M6 DOB calculation -> M3 SBA award reduction recommendation",
+      "expected_system_behavior": "M5 resolves survivor identity across three programs; M6 computes documented loss vs aggregate payout and flags $72k duplication; M3 emits award-reduction recommendation to SBA.",
+      "expected_output": {
+        "risk_score": 0.78,
+        "alert_type": "STAFFORD_DOB_DETECTED",
+        "anomaly_class": "Cross-program payout > documented loss",
+        "compliance_violation": "Stafford Act §312, 42 USC 5155",
+        "recommended_action": "Reduce SBA loan by $72k; document on DOB worksheet"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='STAFFORD_DOB_DETECTED', risk_score within ±0.05 of 0.78, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-013",
+      "title": "Medicare DME geographic mismatch (CGM scheme)",
+      "gao_reference": {
+        "id": "C1-E20",
+        "title": "Medicare DME Fraud",
+        "section": "Category 1",
+        "mapping": "FL supplier shipping CGMs nationwide on one prescriber's orders; validates supplier-prescriber-beneficiary graph analytics."
+      },
+      "gao_problem_category": "Healthcare fraud / DME",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "DME supplier in Hialeah, FL bills Medicare for 2,914 CGM devices shipped to beneficiaries in 41 states over 60 days; 87% of orders originated from a single telehealth prescriber NPI.",
+      "synthetic_input_data": {
+        "supplier_id": "1G-DME-MED-22817",
+        "supplier_state": "FL",
+        "beneficiary_states_count": 41,
+        "shipments_60d": 2914,
+        "single_prescriber_npi_pct": 0.87,
+        "marketer_lead_match_pct": 0.69,
+        "prior_auth_rate": 0.03
+      },
+      "triggered_workflow": "M5 supplier-prescriber graph -> M2 fraud pattern model -> M4 supplier revocation queue",
+      "expected_system_behavior": "M5 graph links 2,914 claims to a single prescriber and 1 supplier; M2 returns high DME-fraud probability; M4 queues supplier for expedited revocation review.",
+      "expected_output": {
+        "risk_score": 0.95,
+        "alert_type": "DME_GEOGRAPHIC_MISMATCH",
+        "anomaly_class": "Single-prescriber / multi-state shipping concentration",
+        "compliance_violation": "42 CFR 424.535 (revocation grounds)",
+        "recommended_action": "Suspend payments; refer to CMS CPI and HHS-OIG"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='DME_GEOGRAPHIC_MISMATCH', risk_score within ±0.05 of 0.95, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-014",
+      "title": "Hospice live-discharge length-of-stay outlier",
+      "gao_reference": {
+        "id": "C1-E21",
+        "title": "Medicare Hospice Fraud",
+        "section": "Category 1",
+        "mapping": "Non-terminal patient hospice enrollment; validates live-discharge / LOS outlier detection + certifier concentration."
+      },
+      "gao_problem_category": "Healthcare fraud / hospice",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Hospice provider in Las Vegas shows 41% live-discharge rate and median LOS of 312 days; one certifying physician signs 78% of elections; chart NLP shows weak terminal-prognosis documentation.",
+      "synthetic_input_data": {
+        "provider_id": "HOSP-NV-558109",
+        "live_discharge_rate": 0.41,
+        "median_los_days": 312,
+        "certifier_concentration_pct": 0.78,
+        "nlp_terminal_evidence_score": 0.22,
+        "beneficiary_count": 614,
+        "annual_revenue_usd": 14750000.0
+      },
+      "triggered_workflow": "M2 hospice integrity model -> M6 outlier ranking -> M4 audit queue",
+      "expected_system_behavior": "M2 returns hospice fraud probability > 0.85; M6 ranks provider in top decile; M4 queues for CMS targeted audit.",
+      "expected_output": {
+        "risk_score": 0.88,
+        "alert_type": "HOSPICE_LOS_LIVE_DISCHARGE_OUTLIER",
+        "anomaly_class": "Multi-factor integrity outlier",
+        "compliance_violation": "42 CFR 418.22 (certification of terminal illness)",
+        "recommended_action": "Initiate TPE review; consider 6-month suspension"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='HOSPICE_LOS_LIVE_DISCHARGE_OUTLIER', risk_score within ±0.05 of 0.88, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-015",
+      "title": "Genetic-testing telehealth scheme emergence",
+      "gao_reference": {
+        "id": "C1-E22",
+        "title": "Genetic Testing Telemedicine Fraud (Medicare)",
+        "section": "Category 1",
+        "mapping": "Telehealth-prescriber-lab triangle with explosive first-wave submissions; validates near-real-time pattern detection."
+      },
+      "gao_problem_category": "Healthcare fraud / emerging scheme",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "First 5 days after CGx CPT code edit change, claims spike from $80k/day baseline to $2.1M/day from 3 labs sharing telehealth platform Tier-3 partners; prescribers have <0.5% prior history of cancer-related orders.",
+      "synthetic_input_data": {
+        "cpt_codes": [
+          "81479",
+          "81455"
+        ],
+        "baseline_daily_volume_usd": 80000.0,
+        "first_wave_daily_volume_usd": 2100000.0,
+        "labs_count": 3,
+        "shared_telehealth_platform": "TeleGenix",
+        "prescriber_prior_cgx_orders_pct": 0.004
+      },
+      "triggered_workflow": "M1 daily-volume change-point -> M2 graph emerges -> M6 emerging-scheme ranking",
+      "expected_system_behavior": "M1 detects step-change in CGx submissions; M2 builds platform-prescriber-lab graph; M6 ranks as 'emerging scheme - high'.",
+      "expected_output": {
+        "risk_score": 0.93,
+        "alert_type": "EMERGING_SCHEME_CGX",
+        "anomaly_class": "Step-change + triangulated graph",
+        "compliance_violation": "Medical necessity (42 CFR 410.32)",
+        "recommended_action": "Prepayment hold on CPT 81479/81455 from involved NPIs; refer to UPIC"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='EMERGING_SCHEME_CGX', risk_score within ±0.05 of 0.93, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-016",
+      "title": "P-card split purchase to evade micro-purchase threshold",
+      "gao_reference": {
+        "id": "C1-E23",
+        "title": "Federal Purchase Card (P-Card) Misuse",
+        "section": "Category 1",
+        "mapping": "Three sequential charges of $3,300, $3,250, $3,400 at one merchant within 35 minutes to evade $10,000 single-purchase threshold."
+      },
+      "gao_problem_category": "Procurement / threshold evasion",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        }
+      ],
+      "scenario_description": "Cardholder makes three IT-equipment purchases at the same vendor within 35 minutes totaling $9,950 — each just below the $10,000 micro-purchase threshold.",
+      "synthetic_input_data": {
+        "cardholder_id": "GS-PC-509-22008",
+        "merchant_id": "MID-557612",
+        "transactions": [
+          {
+            "amount_usd": 3300.0,
+            "ts": "2026-05-04T13:01:00Z"
+          },
+          {
+            "amount_usd": 3250.0,
+            "ts": "2026-05-04T13:18:00Z"
+          },
+          {
+            "amount_usd": 3400.0,
+            "ts": "2026-05-04T13:36:00Z"
+          }
+        ],
+        "micro_purchase_threshold_usd": 10000.0
+      },
+      "triggered_workflow": "M1 split-purchase pattern within 1h window -> AO review",
+      "expected_system_behavior": "M1 sums same-cardholder/same-merchant transactions within rolling window and flags threshold-evasion pattern.",
+      "expected_output": {
+        "risk_score": 0.81,
+        "alert_type": "SPLIT_PURCHASE_THRESHOLD_EVASION",
+        "anomaly_class": "Same-day same-merchant aggregation",
+        "compliance_violation": "FAR 13.003(c)(2)",
+        "recommended_action": "Cardholder counseling; AO confirmation; potential card suspension"
+      },
+      "test_type": "Unit",
+      "pass_fail_criteria": "PASS if alert_type='SPLIT_PURCHASE_THRESHOLD_EVASION', risk_score within ±0.05 of 0.81, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-017",
+      "title": "T&M labor-category overbilling (resume vs invoice mismatch)",
+      "gao_reference": {
+        "id": "C1-E24",
+        "title": "Time-and-Materials Contract Overbilling",
+        "section": "Category 1",
+        "mapping": "Subcontractor labor billed at Senior Architect rate against resumes showing junior experience; validates NLP labor-cat verification."
+      },
+      "gao_problem_category": "Contract overbilling",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        }
+      ],
+      "scenario_description": "Prime contractor invoices DHS for 12 'Senior Cloud Architect' FTEs at $245/hr for 6 months; uploaded resumes show median 2.1 years' experience vs labor-cat minimum of 10 years.",
+      "synthetic_input_data": {
+        "contract_id": "70RTAC25C00021",
+        "billed_labor_cat": "Senior Cloud Architect",
+        "billed_rate_usd_hr": 245.0,
+        "ftes_invoiced": 12,
+        "resume_median_yoe": 2.1,
+        "lcat_min_yoe": 10,
+        "nlp_match_score": 0.18,
+        "monthly_billing_usd": 470400.0
+      },
+      "triggered_workflow": "M2 NLP resume<->lcat match -> M3 contract compliance flag -> recovery audit",
+      "expected_system_behavior": "M2 returns low resume-to-lcat similarity; M3 flags non-conforming labor; recovery audit estimated at $1.6M over period.",
+      "expected_output": {
+        "risk_score": 0.87,
+        "alert_type": "LABOR_CATEGORY_MISCLASSIFICATION",
+        "anomaly_class": "NLP credential vs lcat mismatch",
+        "compliance_violation": "FAR 52.232-7 (T&M payment) / contract clauses",
+        "recommended_action": "Issue cure notice; recover $1.6M; downgrade lcat"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='LABOR_CATEGORY_MISCLASSIFICATION', risk_score within ±0.05 of 0.87, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-018",
+      "title": "DoD MDAP EVM early-warning overrun",
+      "gao_reference": {
+        "id": "C1-E25",
+        "title": "DoD Cost-Plus Contract Overruns",
+        "section": "Category 1",
+        "mapping": "EVM CPI/SPI trends predict overrun on a major weapons program; validates predictive overrun ML."
+      },
+      "gao_problem_category": "Cost overrun (MDAP)",
+      "features_under_test": [
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Major program (notional MDAP-X) shows CPI=0.78, SPI=0.82, with supplier on-time-delivery at 61% and parametric should-cost indicating 14% over baseline; ML predicts 23% lifecycle overrun.",
+      "synthetic_input_data": {
+        "program_id": "MDAP-X-2026",
+        "cpi": 0.78,
+        "spi": 0.82,
+        "supplier_otd_pct": 0.61,
+        "baseline_eac_usd_m": 14200.0,
+        "predicted_overrun_pct": 0.23
+      },
+      "triggered_workflow": "M6 EVM ingestion -> overrun forecast -> PEO dashboard alert",
+      "expected_system_behavior": "M6 ingests monthly CPRs, fits parametric should-cost model, and produces overrun forecast with confidence interval.",
+      "expected_output": {
+        "risk_score": 0.84,
+        "alert_type": "MDAP_OVERRUN_FORECAST",
+        "anomaly_class": "EVM trend + supplier OTD + should-cost",
+        "compliance_violation": "10 USC 4321 (Nunn-McCurdy threshold risk)",
+        "recommended_action": "Trigger should-cost review; corrective-action plan"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='MDAP_OVERRUN_FORECAST', risk_score within ±0.05 of 0.84, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-019",
+      "title": "Bid rigging via complementary bidding",
+      "gao_reference": {
+        "id": "C1-E26",
+        "title": "Procurement Collusion and Bid Rigging",
+        "section": "Category 1",
+        "mapping": "Three bidders rotate winning position on GSA construction task orders with high-priced losing bids; validates bid-pattern ML."
+      },
+      "gao_problem_category": "Antitrust / collusion",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Three contractors win in rotation across 14 GSA construction task orders; losing bids consistently fall 12-15% above winner; proposal NLP shows 0.84 cosine similarity in technical sections.",
+      "synthetic_input_data": {
+        "task_orders_count": 14,
+        "bidders": [
+          "NorthArc Const.",
+          "Pillar Build LLC",
+          "Quanta Civil Inc"
+        ],
+        "rotation_chi_square_p": 0.0008,
+        "losing_bid_premium_avg": 0.135,
+        "proposal_cosine_max": 0.84
+      },
+      "triggered_workflow": "M5 bidder graph -> M2 rotation + NLP similarity -> antitrust referral",
+      "expected_system_behavior": "M5 builds bidder-task-order graph; M2 detects rotation, complementary loss spread, and proposal similarity.",
+      "expected_output": {
+        "risk_score": 0.86,
+        "alert_type": "BID_RIGGING_PATTERN",
+        "anomaly_class": "Rotation + spread + proposal similarity",
+        "compliance_violation": "Sherman Act §1; FAR 3.303",
+        "recommended_action": "Refer to DOJ Procurement Collusion Strike Force"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='BID_RIGGING_PATTERN', risk_score within ±0.05 of 0.86, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-020",
+      "title": "Identity-theft tax refund spike",
+      "gao_reference": {
+        "id": "C1-E28",
+        "title": "Tax Refund Identity Theft",
+        "section": "Category 1",
+        "mapping": "Mass e-file from one device farm with W-2 mismatches; validates pre-refund ML + device intelligence."
+      },
+      "gao_problem_category": "Identity fraud / tax refund",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "188 e-filed individual returns originate from 6 device fingerprints over 4 hours; W-2 pre-load shows no employer filing for 91% of filers; behavioral typing cadence z-score 5.4.",
+      "synthetic_input_data": {
+        "returns_count": 188,
+        "device_fingerprints": 6,
+        "window_hours": 4,
+        "w2_preload_missing_pct": 0.91,
+        "typing_zscore": 5.4,
+        "avg_refund_usd": 4180.0
+      },
+      "triggered_workflow": "M2 device cluster -> M5 behavioral + W-2 mismatch -> M4 freeze cohort",
+      "expected_system_behavior": "M2 clusters returns by device + behavioral signal; M5 confirms W-2 absence; M4 freezes refunds and triggers IP PIN enrollment.",
+      "expected_output": {
+        "risk_score": 0.96,
+        "alert_type": "REFUND_IDENTITY_THEFT_BURST",
+        "anomaly_class": "Device-farm + W-2 mismatch",
+        "compliance_violation": "26 USC §6402(m)",
+        "recommended_action": "Freeze 188 returns; CI fraud referral; victim IP PIN outreach"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='REFUND_IDENTITY_THEFT_BURST', risk_score within ±0.05 of 0.96, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-021",
+      "title": "FSIS/FDA duplicate inspection of dual-jurisdiction facility",
+      "gao_reference": {
+        "id": "C2-E1",
+        "title": "Bifurcated Food Safety Authority",
+        "section": "Category 2: Fragmentation, Overlap, Duplication",
+        "mapping": "Facility producing both meat pizza (FSIS) and cheese pizza (FDA) inspected twice in 30 days; validates unified inspection coordination."
+      },
+      "gao_problem_category": "Fragmentation / duplicate inspection",
+      "features_under_test": [
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Establishment #4477A is inspected by FSIS PHIS on 2026-03-04 and by FDA FSMA team on 2026-03-19 — overlapping scope on sanitation programs.",
+      "synthetic_input_data": {
+        "facility_id": "FAC-4477A",
+        "fsis_inspection": {
+          "date": "2026-03-04",
+          "scope": [
+            "HACCP",
+            "Sanitation SOPs"
+          ]
+        },
+        "fda_inspection": {
+          "date": "2026-03-19",
+          "scope": [
+            "PCHF",
+            "Sanitation"
+          ]
+        },
+        "scope_overlap_jaccard": 0.55
+      },
+      "triggered_workflow": "M5 unified inspection registry -> overlap alert",
+      "expected_system_behavior": "M5 cross-references PHIS and FSMA inspection records and surfaces scope overlap within 30 days.",
+      "expected_output": {
+        "risk_score": 0.41,
+        "alert_type": "DUPLICATE_INSPECTION_RISK",
+        "anomaly_class": "Cross-regulator inspection overlap",
+        "compliance_violation": "Internal control efficiency (not statutory)",
+        "recommended_action": "Coordinate joint scope under FSIS-FDA MOU; reduce next visit"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='DUPLICATE_INSPECTION_RISK', risk_score within ±0.05 of 0.41, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-022",
+      "title": "Workforce program duplicate enrollment across WIOA + TAA + DOL grants",
+      "gao_reference": {
+        "id": "C2-E2",
+        "title": "Workforce Development Program Sprawl",
+        "section": "Category 2",
+        "mapping": "Same individual receives services under 3 federal workforce programs without coordination; validates cross-program participant matching."
+      },
+      "gao_problem_category": "Fragmentation / participant duplication",
+      "features_under_test": [
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        },
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        }
+      ],
+      "scenario_description": "Hashed participant ID receives concurrent services in WIOA Adult, TAA, and a DOL Apprenticeship grant — funded for the same time period with overlapping training vendors.",
+      "synthetic_input_data": {
+        "participant_id_hash": "sha256:c44a...d72",
+        "programs": [
+          "WIOA-Adult",
+          "TAA",
+          "DOL-Apprenticeship-G-2025-112"
+        ],
+        "training_vendor": "BluePath Skills Inc.",
+        "overlap_months": 5,
+        "duplicated_cost_usd": 14200.0
+      },
+      "triggered_workflow": "M5 hashed-identity match -> M3 grant cost-allocation review",
+      "expected_system_behavior": "M5 surfaces multi-program enrollment; M3 flags potential double-charging of training cost to multiple awards.",
+      "expected_output": {
+        "risk_score": 0.62,
+        "alert_type": "WORKFORCE_PROGRAM_OVERLAP",
+        "anomaly_class": "Same participant + same vendor + same period",
+        "compliance_violation": "2 CFR 200.403 (allocability)",
+        "recommended_action": "Reconcile cost allocation; recover duplicate share"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='WORKFORCE_PROGRAM_OVERLAP', risk_score within ±0.05 of 0.62, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-023",
+      "title": "VA + DoD MHS duplicate community-care payment",
+      "gao_reference": {
+        "id": "C2-E3",
+        "title": "Veterans' Healthcare Across VA, DoD, and HHS",
+        "section": "Category 2",
+        "mapping": "Servicemember in transition receives the same outpatient encounter paid by both TRICARE and VA Community Care."
+      },
+      "gao_problem_category": "Cross-payer duplicate payment",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Outpatient orthopedic encounter (CPT 27447) paid by TRICARE for $18,442 on 2026-02-09 and by VA CCN for $17,980 on 2026-02-14 — same beneficiary, same provider, same DOS.",
+      "synthetic_input_data": {
+        "beneficiary_id_hash": "sha256:11aa...92f",
+        "tricare_claim": {
+          "id": "TRI-2026-998421",
+          "amount_usd": 18442.0,
+          "dos": "2026-02-09"
+        },
+        "vacc_claim": {
+          "id": "VACC-2026-001782",
+          "amount_usd": 17980.0,
+          "dos": "2026-02-09"
+        },
+        "cpt": "27447",
+        "provider_npi": "1559974412"
+      },
+      "triggered_workflow": "M5 cross-payer claim match -> M2 duplicate-payment block",
+      "expected_system_behavior": "M5 resolves identity across DoD MHS GENESIS and VA CCN; M2 flags duplicate; recovery initiated.",
+      "expected_output": {
+        "risk_score": 0.83,
+        "alert_type": "CROSS_PAYER_DUPLICATE",
+        "anomaly_class": "Same DOS / same CPT / same NPI",
+        "compliance_violation": "38 USC 1729 / TRICARE coordination of benefits",
+        "recommended_action": "Recover VA CCN payment; update COB indicators"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='CROSS_PAYER_DUPLICATE', risk_score within ±0.05 of 0.83, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-024",
+      "title": "Cyber incident double-reporting (CISA + sector regulator)",
+      "gao_reference": {
+        "id": "C2-E4",
+        "title": "Cybersecurity Authority Overlap",
+        "section": "Category 2",
+        "mapping": "Same incident reported separately to CISA and TSA; validates incident-report deduplication."
+      },
+      "gao_problem_category": "Reporting fragmentation",
+      "features_under_test": [
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Pipeline operator submits incident report to TSA per SD 02C and separate CIRCIA report to CISA; fields differ in narrative but share IOCs, timestamps, and affected ICS endpoints.",
+      "synthetic_input_data": {
+        "operator_uei": "PIPECO-UEI-441188",
+        "tsa_report_id": "TSA-IR-2026-0418",
+        "cisa_report_id": "CIRCIA-2026-009114",
+        "ioc_overlap_pct": 0.91,
+        "narrative_cosine": 0.71
+      },
+      "triggered_workflow": "M5 cross-regulator dedup -> unified case",
+      "expected_system_behavior": "M5 maps both reports to a single incident; downstream analytics see one event rather than two.",
+      "expected_output": {
+        "risk_score": 0.3,
+        "alert_type": "INCIDENT_REPORT_DEDUP",
+        "anomaly_class": "Cross-regulator duplicate filing",
+        "compliance_violation": "n/a (efficiency)",
+        "recommended_action": "Merge reports; notify operator of unified status"
+      },
+      "test_type": "Unit",
+      "pass_fail_criteria": "PASS if alert_type='INCIDENT_REPORT_DEDUP', risk_score within ±0.05 of 0.3, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-025",
+      "title": "Bank examination data-call duplication (OCC + FDIC + FRB)",
+      "gao_reference": {
+        "id": "C2-E5",
+        "title": "Federal Financial Regulator Fragmentation",
+        "section": "Category 2",
+        "mapping": "Three regulators request near-identical CRE concentration data; validates NLP dedup of information requests."
+      },
+      "gao_problem_category": "Regulatory overlap",
+      "features_under_test": [
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Mid-size bank receives 3 CRE-concentration data requests within 11 days — column sets overlap by 88%, definitions vary slightly.",
+      "synthetic_input_data": {
+        "rssd_id": "1102934",
+        "requests": [
+          {
+            "regulator": "OCC",
+            "date": "2026-02-03",
+            "fields": 142
+          },
+          {
+            "regulator": "FDIC",
+            "date": "2026-02-08",
+            "fields": 138
+          },
+          {
+            "regulator": "FRB",
+            "date": "2026-02-14",
+            "fields": 151
+          }
+        ],
+        "field_overlap_pct": 0.88
+      },
+      "triggered_workflow": "M5 request-dedup NLP -> harmonized response",
+      "expected_system_behavior": "M5 generates one harmonized dataset response with regulator-specific deltas, reducing bank burden.",
+      "expected_output": {
+        "risk_score": 0.2,
+        "alert_type": "DATA_CALL_OVERLAP",
+        "anomaly_class": "Cross-regulator request duplication",
+        "compliance_violation": "n/a (compliance burden)",
+        "recommended_action": "Send harmonized response; track burden reduction metric"
+      },
+      "test_type": "Unit",
+      "pass_fail_criteria": "PASS if alert_type='DATA_CALL_OVERLAP', risk_score within ±0.05 of 0.2, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-026",
+      "title": "STEM education program overlap (NSF + NIH + ED)",
+      "gao_reference": {
+        "id": "C2-E7",
+        "title": "STEM Education Program Overlap",
+        "section": "Category 2",
+        "mapping": "Same school cohort served by 3 STEM programs without outcome attribution; validates participant outcome platform."
+      },
+      "gao_problem_category": "Program overlap",
+      "features_under_test": [
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "A high school cohort is served by NSF Noyce, NIH SEPA, and ED MSP programs with overlapping intervention windows; outcome attribution unclear.",
+      "synthetic_input_data": {
+        "school_id": "ED-NCES-330021",
+        "cohort_size": 412,
+        "programs": [
+          "NSF-Noyce",
+          "NIH-SEPA",
+          "ED-MSP"
+        ],
+        "intervention_overlap_months": 8,
+        "outcome_attribution_method": null
+      },
+      "triggered_workflow": "M5 participant-outcome match -> M3 effectiveness comparison",
+      "expected_system_behavior": "M5 joins programs at student level; M3 surfaces overlap and recommends attribution method.",
+      "expected_output": {
+        "risk_score": 0.35,
+        "alert_type": "STEM_OVERLAP_ATTRIBUTION",
+        "anomaly_class": "Same cohort, multiple programs",
+        "compliance_violation": "Evidence Act §312 - performance measurement",
+        "recommended_action": "Apply matched comparison; report combined outcomes"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='STEM_OVERLAP_ATTRIBUTION', risk_score within ±0.05 of 0.35, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-027",
+      "title": "Homelessness services fragmentation - duplicated intake",
+      "gao_reference": {
+        "id": "C2-E8",
+        "title": "Homelessness Services Fragmentation",
+        "section": "Category 2",
+        "mapping": "Same individual intaked separately by HUD CoC and VA HCHV with conflicting vulnerability scores."
+      },
+      "gao_problem_category": "Service duplication",
+      "features_under_test": [
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Hashed client appears in HUD HMIS and VA HOMES with two different VI-SPDAT scores (12 and 7) and two separate housing queue placements.",
+      "synthetic_input_data": {
+        "client_id_hash": "sha256:80de...3a1",
+        "hmis_vispdat": 12,
+        "vahomes_vispdat": 7,
+        "days_between_intakes": 22
+      },
+      "triggered_workflow": "M5 federated by-name list -> coordinated entry resolution",
+      "expected_system_behavior": "M5 surfaces dual-intake; recommends single coordinated entry score and unified housing match.",
+      "expected_output": {
+        "risk_score": 0.25,
+        "alert_type": "DUPLICATE_HOMELESS_INTAKE",
+        "anomaly_class": "Cross-system intake duplication",
+        "compliance_violation": "n/a (operational)",
+        "recommended_action": "Merge records; reconcile vulnerability score; assign single housing match"
+      },
+      "test_type": "Unit",
+      "pass_fail_criteria": "PASS if alert_type='DUPLICATE_HOMELESS_INTAKE', risk_score within ±0.05 of 0.25, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-028",
+      "title": "Disaster recovery survivor re-documentation burden",
+      "gao_reference": {
+        "id": "C2-E11",
+        "title": "Disaster Recovery Program Fragmentation",
+        "section": "Category 2",
+        "mapping": "Same survivor asked for same income docs by FEMA, SBA, and HUD CDBG-DR; validates single intake."
+      },
+      "gao_problem_category": "Operational duplication",
+      "features_under_test": [
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Hashed survivor uploads identical W-2 PDFs to FEMA IHP, SBA loan, and HUD CDBG-DR portals within 60 days.",
+      "synthetic_input_data": {
+        "survivor_id_hash": "sha256:51c2...88e",
+        "duplicate_doc_hash": "sha256:a04f...911",
+        "submissions": [
+          "FEMA",
+          "SBA",
+          "HUD-CDBG-DR"
+        ],
+        "submission_window_days": 60
+      },
+      "triggered_workflow": "M5 document-hash dedup -> M3 single-intake recommendation",
+      "expected_system_behavior": "M5 matches document hashes across portals; M3 flags as DOB documentation candidate for reuse.",
+      "expected_output": {
+        "risk_score": 0.18,
+        "alert_type": "DOCUMENT_REUSE_OPPORTUNITY",
+        "anomaly_class": "Hash-matched cross-program document",
+        "compliance_violation": "n/a (operational)",
+        "recommended_action": "Activate cross-program document-reuse with consent"
+      },
+      "test_type": "Unit",
+      "pass_fail_criteria": "PASS if alert_type='DOCUMENT_REUSE_OPPORTUNITY', risk_score within ±0.05 of 0.18, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-029",
+      "title": "Broadband BEAD + RDOF overbuild",
+      "gao_reference": {
+        "id": "C2-E12",
+        "title": "Rural Broadband Programs",
+        "section": "Category 2",
+        "mapping": "Same serviceable location awarded under NTIA BEAD and FCC RDOF; validates location-level deduplication."
+      },
+      "gao_problem_category": "Funding duplication",
+      "features_under_test": [
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Census block group 53033006701 contains 412 BSL IDs awarded to two providers under BEAD ($1.2M) and RDOF ($870k) with overlapping coverage commitments.",
+      "synthetic_input_data": {
+        "cbg": "53033006701",
+        "bsl_count": 412,
+        "bead_award_usd": 1200000.0,
+        "rdof_award_usd": 870000.0,
+        "overlap_bsl_count": 388
+      },
+      "triggered_workflow": "M5 BSL geocoding match -> M3 funding-duplication alert",
+      "expected_system_behavior": "M5 reconciles BSLs across NTIA + FCC datasets; M3 surfaces overlap and recommends rescission or buildout reduction.",
+      "expected_output": {
+        "risk_score": 0.68,
+        "alert_type": "BROADBAND_DUPLICATE_FUNDING",
+        "anomaly_class": "BSL-level overlap",
+        "compliance_violation": "BEAD NOFO §IV.B.6 (no duplicate funding)",
+        "recommended_action": "Rescission/clawback of duplicate BSL share"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='BROADBAND_DUPLICATE_FUNDING', risk_score within ±0.05 of 0.68, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-030",
+      "title": "DoD parts-buy duplication across Services",
+      "gao_reference": {
+        "id": "C2-E29",
+        "title": "DoD Maintenance and Logistics Systems",
+        "section": "Category 2",
+        "mapping": "USAF LMP and Navy NTCSS both ordering same NSN within 30 days; validates cross-service demand forecasting."
+      },
+      "gao_problem_category": "Inventory duplication",
+      "features_under_test": [
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "NSN 5305-01-441-2287 ordered separately by USAF (qty 4,200, $612k) and Navy (qty 3,800, $590k) within 28 days; combined demand fits within OEM single-buy discount tier.",
+      "synthetic_input_data": {
+        "nsn": "5305-01-441-2287",
+        "usaf_order": {
+          "qty": 4200,
+          "amount_usd": 612000.0,
+          "date": "2026-03-03"
+        },
+        "navy_order": {
+          "qty": 3800,
+          "amount_usd": 590000.0,
+          "date": "2026-03-31"
+        },
+        "discount_threshold_qty": 7500
+      },
+      "triggered_workflow": "M5 cross-service NSN demand -> M6 consolidation forecast",
+      "expected_system_behavior": "M5 surfaces overlapping demand; M6 forecasts $180k savings from consolidated buy.",
+      "expected_output": {
+        "risk_score": 0.28,
+        "alert_type": "CROSS_SERVICE_PARTS_DUPLICATION",
+        "anomaly_class": "NSN demand overlap",
+        "compliance_violation": "n/a (efficiency)",
+        "recommended_action": "Consolidate buy via DLA; estimated savings $180k"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='CROSS_SERVICE_PARTS_DUPLICATION', risk_score within ±0.05 of 0.28, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-031",
+      "title": "GAO priority-recommendation aging and ownership decay",
+      "gao_reference": {
+        "id": "C3-E1",
+        "title": "Backlog of Open GAO Recommendations",
+        "section": "Category 3: Execution Gap",
+        "mapping": "Priority recommendation open 5+ years with no current owner; validates NLP decomposition + tracking."
+      },
+      "gao_problem_category": "Oversight execution",
+      "features_under_test": [
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "GAO-20-XXX priority recommendation to Agency Z remains open since 2020-06-12; owner record points to a position vacated in 2023; no milestones logged in 17 months.",
+      "synthetic_input_data": {
+        "recommendation_id": "GAO-20-XXX-04",
+        "opened_date": "2020-06-12",
+        "current_owner_status": "VACANT_18M",
+        "milestones_logged_last_12m": 0,
+        "estimated_savings_usd_m": 380.0
+      },
+      "triggered_workflow": "M3 recommendation lifecycle -> M6 staleness scoring -> escalation",
+      "expected_system_behavior": "M3 surfaces stalled recommendation; M6 scores risk-adjusted value of closure and escalates to OMB liaison.",
+      "expected_output": {
+        "risk_score": 0.72,
+        "alert_type": "STALE_PRIORITY_RECOMMENDATION",
+        "anomaly_class": "Ownership gap + no milestone activity",
+        "compliance_violation": "31 USC 720 (response to GAO)",
+        "recommended_action": "Reassign owner; produce 60-day milestone plan"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='STALE_PRIORITY_RECOMMENDATION', risk_score within ±0.05 of 0.72, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-032",
+      "title": "DoD trial-balance JE anomaly during audit",
+      "gao_reference": {
+        "id": "C3-E2",
+        "title": "DoD Financial Statement Audit Failures",
+        "section": "Category 3",
+        "mapping": "Period-end journal entries posted to suspense accounts by user with multiple-system access; validates ML JE anomaly + IT general controls."
+      },
+      "gao_problem_category": "Financial reporting integrity",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        }
+      ],
+      "scenario_description": "On 2026-09-30 at 23:47 UTC, 142 journal entries totaling $1.18B are posted to GFEBS Suspense Account 1410 by user-id SVC-INTERFACE-08 (a service account not approved for manual JEs).",
+      "synthetic_input_data": {
+        "system": "GFEBS",
+        "user_id": "SVC-INTERFACE-08",
+        "user_type": "service_account",
+        "manual_je_authorized": false,
+        "je_count": 142,
+        "je_total_usd": 1180000000.0,
+        "posted_ts": "2026-09-30T23:47:00Z"
+      },
+      "triggered_workflow": "M1 JE anomaly -> M4 ITGC violation -> auditor packet",
+      "expected_system_behavior": "M1 flags off-policy JE posting; M4 marks ITGC violation and freezes period close pending audit.",
+      "expected_output": {
+        "risk_score": 0.94,
+        "alert_type": "PERIOD_END_JE_ANOMALY",
+        "anomaly_class": "Unauthorized service-account manual JE",
+        "compliance_violation": "FISCAM ITGC; FMFIA",
+        "recommended_action": "Reverse JEs pending review; report in audit report"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='PERIOD_END_JE_ANOMALY', risk_score within ±0.05 of 0.94, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-033",
+      "title": "IRS legacy IMF reconciliation drift",
+      "gao_reference": {
+        "id": "C3-E3",
+        "title": "IRS Legacy System Modernization Delays",
+        "section": "Category 3",
+        "mapping": "Strangler-pattern modernization where IMF and modern subsystem diverge; validates ML reconciliation."
+      },
+      "gao_problem_category": "Modernization integrity",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Strangler shim shows 0.18% account-balance divergence between IMF and modernized subsystem across 4.1M sample accounts — above SLA threshold of 0.05%.",
+      "synthetic_input_data": {
+        "sample_accounts": 4100000,
+        "divergence_pct": 0.0018,
+        "sla_pct": 0.0005,
+        "max_account_drift_usd": 4280.0
+      },
+      "triggered_workflow": "M5 dual-system reconciliation -> M1 drift alert",
+      "expected_system_behavior": "M5 compares balances across legacy and modern systems; M1 raises SLA breach with affected-account list.",
+      "expected_output": {
+        "risk_score": 0.66,
+        "alert_type": "STRANGLER_RECONCILIATION_DRIFT",
+        "anomaly_class": "Dual-system balance divergence",
+        "compliance_violation": "Internal control over financial reporting",
+        "recommended_action": "Pause cutover; investigate top 200 drift accounts"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='STRANGLER_RECONCILIATION_DRIFT', risk_score within ±0.05 of 0.66, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-034",
+      "title": "Do Not Pay match missed by state UI integration",
+      "gao_reference": {
+        "id": "C3-E5",
+        "title": "Treasury Do Not Pay Underutilization",
+        "section": "Category 3",
+        "mapping": "State UI system does not check Treasury DNP DMF pre-disbursement; validates DNP API integration."
+      },
+      "gao_problem_category": "Pre-payment control gap",
+      "features_under_test": [
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        }
+      ],
+      "scenario_description": "State UI agency disburses $4,180 to claimant whose SSN matches DMF with 99.7% confidence; Treasury DNP API call returns DECEASED but state system ignored response code.",
+      "synthetic_input_data": {
+        "state": "GA",
+        "claim_id": "GA-UI-2026-991127",
+        "dnp_response": "DECEASED",
+        "dnp_confidence": 0.997,
+        "disbursement_usd": 4180.0,
+        "system_ignored_response": true
+      },
+      "triggered_workflow": "M4 DNP integration test -> regression alert",
+      "expected_system_behavior": "M4 enforces hard block on DECEASED DNP response; integration test fails on simulated disbursement.",
+      "expected_output": {
+        "risk_score": 0.99,
+        "alert_type": "DNP_DECEASED_BYPASS",
+        "anomaly_class": "Pre-disbursement control bypass",
+        "compliance_violation": "IPERIA / 31 USC 3354",
+        "recommended_action": "Block disbursement; remediate state UI integration"
+      },
+      "test_type": "Unit",
+      "pass_fail_criteria": "PASS if alert_type='DNP_DECEASED_BYPASS', risk_score within ±0.05 of 0.99, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-035",
+      "title": "VA community-care wait-time mis-reporting",
+      "gao_reference": {
+        "id": "C3-E6",
+        "title": "VA Scheduling and Wait-Time Systems",
+        "section": "Category 3",
+        "mapping": "Recorded wait time conflicts with referral-to-encounter telemetry; validates ML wait-time accuracy."
+      },
+      "gao_problem_category": "Operational integrity",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "VAMC #688 reports 12-day average community-care wait, but telemetry-derived referral-to-encounter median is 38 days; delta exceeds variance band by 4σ.",
+      "synthetic_input_data": {
+        "vamc_id": "688",
+        "reported_wait_days": 12,
+        "telemetry_wait_days_median": 38,
+        "sample_referrals": 1442,
+        "sigma": 4.1
+      },
+      "triggered_workflow": "M1 reported vs telemetry comparison -> M6 ranking",
+      "expected_system_behavior": "M1 flags reporting-telemetry divergence; M6 ranks facility in top decile for review.",
+      "expected_output": {
+        "risk_score": 0.74,
+        "alert_type": "WAIT_TIME_REPORTING_DIVERGENCE",
+        "anomaly_class": "Reported vs telemetry variance",
+        "compliance_violation": "VA MISSION Act access standards",
+        "recommended_action": "Open VHA Office of Integrity inquiry; reconcile reporting"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='WAIT_TIME_REPORTING_DIVERGENCE', risk_score within ±0.05 of 0.74, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-036",
+      "title": "NASA Monte Carlo cost-overrun prediction",
+      "gao_reference": {
+        "id": "C3-E18",
+        "title": "NASA Major Program Cost Performance",
+        "section": "Category 3",
+        "mapping": "Parametric ICE forecasts cost growth on a planetary science mission; validates predictive overrun ML."
+      },
+      "gao_problem_category": "Cost overrun",
+      "features_under_test": [
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Mission baseline LCC of $3.2B. Inputs to parametric model: TRL distribution skewed low, sub-contractor concentration high, schedule margin 9%. Monte Carlo (n=10,000) returns 65th percentile LCC = $4.4B (38% growth).",
+      "synthetic_input_data": {
+        "mission_id": "PSM-2030",
+        "baseline_lcc_usd_m": 3200.0,
+        "trl_avg": 4.6,
+        "subk_top3_pct": 0.71,
+        "schedule_margin_pct": 0.09,
+        "p65_lcc_usd_m": 4400.0
+      },
+      "triggered_workflow": "M6 parametric ICE + Monte Carlo -> independent estimate",
+      "expected_system_behavior": "M6 runs Monte Carlo with parametric inputs and emits P50/P65/P80 LCC; alert raised on >25% growth at P65.",
+      "expected_output": {
+        "risk_score": 0.81,
+        "alert_type": "MISSION_COST_GROWTH_FORECAST",
+        "anomaly_class": "Independent-estimate overrun",
+        "compliance_violation": "NPR 7120.5 / SPI thresholds",
+        "recommended_action": "Trigger termination-review threshold analysis"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='MISSION_COST_GROWTH_FORECAST', risk_score within ±0.05 of 0.81, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-037",
+      "title": "FAFSA simplification - IRS data exchange exception spike",
+      "gao_reference": {
+        "id": "C3-E11",
+        "title": "Federal Student Aid (FAFSA) Modernization",
+        "section": "Category 3",
+        "mapping": "Spike in IRS-ED data exchange exceptions affecting eligibility; validates exception monitoring + workflow."
+      },
+      "gao_problem_category": "Modernization defect",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        }
+      ],
+      "scenario_description": "FAFSA cycle exception rate on IRS DRT pulls rises from baseline 0.8% to 6.4% over 72h after release; affected families auto-queued for manual review.",
+      "synthetic_input_data": {
+        "cycle": "2026-27",
+        "release_version": "FAFSA-2026.4.1",
+        "baseline_exception_rate": 0.008,
+        "current_exception_rate": 0.064,
+        "affected_records": 142811
+      },
+      "triggered_workflow": "M1 release change-point -> M3 case workflow",
+      "expected_system_behavior": "M1 detects step-change post-release; M3 creates exception queue and SLA tracking for case resolution.",
+      "expected_output": {
+        "risk_score": 0.78,
+        "alert_type": "FAFSA_EXCEPTION_RELEASE_REGRESSION",
+        "anomaly_class": "Post-release regression",
+        "compliance_violation": "FUTURE Act §6103(l)(13)",
+        "recommended_action": "Roll back IRS DRT field-mapping change; backfill exceptions"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='FAFSA_EXCEPTION_RELEASE_REGRESSION', risk_score within ±0.05 of 0.78, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-038",
+      "title": "False-positive: legitimate seasonal benefit spike",
+      "gao_reference": {
+        "id": "C3-E5",
+        "title": "Treasury Do Not Pay Underutilization (false-positive control)",
+        "section": "Category 3",
+        "mapping": "Real seasonal SNAP surge mistakenly looks like fraud spike; validates false-positive suppression in M6."
+      },
+      "gao_problem_category": "False positive (AI validation)",
+      "features_under_test": [
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "SNAP issuance in PR surges 38% MoM in October after a known hurricane D-SNAP activation; naive anomaly detector would alert.",
+      "synthetic_input_data": {
+        "state": "PR",
+        "mom_change_pct": 0.38,
+        "d_snap_active": true,
+        "d_snap_id": "DSNAP-PR-2026-04",
+        "historical_dsnap_surge_avg_pct": 0.41
+      },
+      "triggered_workflow": "M6 context-aware suppression -> no alert",
+      "expected_system_behavior": "M6 detects D-SNAP context and suppresses anomaly; system should NOT generate a fraud alert.",
+      "expected_output": {
+        "risk_score": 0.12,
+        "alert_type": "NO_ALERT_FALSE_POSITIVE_SUPPRESSED",
+        "anomaly_class": "Contextualized seasonal surge",
+        "compliance_violation": "n/a",
+        "recommended_action": "Log as expected variance; no action"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if system raises no fraud alert; risk_score <= 0.30; context tags applied. FAIL if any fraud alert is generated."
+    },
+    {
+      "test_case_id": "GG-TC-039",
+      "title": "False-positive: telehealth-rural prescriber legitimately remote",
+      "gao_reference": {
+        "id": "C1-E22",
+        "title": "Genetic Testing Telemedicine (false-positive control)",
+        "section": "Category 1 / control",
+        "mapping": "Rural beneficiaries legitimately served by remote prescriber; geographic mismatch alone should not flag."
+      },
+      "gao_problem_category": "False positive (AI validation)",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Telehealth prescriber NPI based in MT writes orders to beneficiaries across 11 states for chronic-condition refills; claim mix is consistent with prior 2 years; no marketing-platform link.",
+      "synthetic_input_data": {
+        "prescriber_npi": "1664229911",
+        "beneficiary_states_count": 11,
+        "marketing_link": false,
+        "prior_history_consistent": true,
+        "rural_RUCA": true
+      },
+      "triggered_workflow": "M6 contextual scoring -> low score, no alert",
+      "expected_system_behavior": "M2 + M6 combine signals; absence of marketing graph + consistent history yields low score; no alert.",
+      "expected_output": {
+        "risk_score": 0.18,
+        "alert_type": "NO_ALERT_FALSE_POSITIVE_SUPPRESSED",
+        "anomaly_class": "Geographic spread without scheme signals",
+        "compliance_violation": "n/a",
+        "recommended_action": "No action; continue monitoring"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if system raises no fraud alert; risk_score <= 0.30; context tags applied. FAIL if any fraud alert is generated."
+    },
+    {
+      "test_case_id": "GG-TC-040",
+      "title": "CDM cyber recommendation backlog scoring",
+      "gao_reference": {
+        "id": "C3-E24",
+        "title": "Cybersecurity Recommendation Backlog",
+        "section": "Category 3",
+        "mapping": "FISMA IG findings open across an agency; validates GRC auto-evidence + prioritization ML."
+      },
+      "gao_problem_category": "Oversight execution / cyber",
+      "features_under_test": [
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Agency Y has 421 open IG cyber findings, of which 87 map to NIST 800-53 controls with 'High' impact and 'No' CDM evidence; M6 must prioritize by exposure.",
+      "synthetic_input_data": {
+        "agency": "Y",
+        "open_findings": 421,
+        "high_impact_no_evidence": 87,
+        "median_open_days": 612
+      },
+      "triggered_workflow": "M3 ingest IG findings -> M6 risk-weighted backlog",
+      "expected_system_behavior": "M3 normalizes findings; M6 ranks top-87 by NIST-impact x exposure x mean-time-to-exploit.",
+      "expected_output": {
+        "risk_score": 0.77,
+        "alert_type": "CYBER_BACKLOG_PRIORITIZATION",
+        "anomaly_class": "Backlog risk-ranking",
+        "compliance_violation": "FISMA / OMB M-24-04",
+        "recommended_action": "Remediate top 25 findings within 90 days"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='CYBER_BACKLOG_PRIORITIZATION', risk_score within ±0.05 of 0.77, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-041",
+      "title": "Sham Medicare provider enrollment via straw owner",
+      "gao_reference": {
+        "id": "C4-E1",
+        "title": "Medicare Provider Enrollment Vetting Weakness",
+        "section": "Category 4",
+        "mapping": "Shell LLC + straw owner enrolls then bills aggressively pre-revocation; validates provider integrity engine."
+      },
+      "gao_problem_category": "Provider integrity",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "New Medicare-enrolled DME supplier (effective 2026-02-01) bills $4.2M in 60 days; sole owner appears as straw across 3 prior revoked NPIs; corporate filings show address shared with 11 other LLCs.",
+      "synthetic_input_data": {
+        "provider_npi": "1799882210",
+        "effective_date": "2026-02-01",
+        "billing_60d_usd": 4200000.0,
+        "owner_prior_revocations": 3,
+        "address_llc_concentration": 11,
+        "boi_match_score": 0.93
+      },
+      "triggered_workflow": "M5 BOI + state-registry graph -> M2 sham-provider score -> M4 hold + revoke",
+      "expected_system_behavior": "M5 links new NPI's owner to prior revocations via beneficial-ownership graph; M2 returns sham-provider score > 0.9; M4 holds payments and initiates revocation.",
+      "expected_output": {
+        "risk_score": 0.94,
+        "alert_type": "SHAM_PROVIDER_ENROLLMENT",
+        "anomaly_class": "Straw owner + revocation history + address concentration",
+        "compliance_violation": "42 CFR 424.530/535",
+        "recommended_action": "Suspend payments; initiate Form CMS-855 revocation"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='SHAM_PROVIDER_ENROLLMENT', risk_score within ±0.05 of 0.94, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-042",
+      "title": "K-1 partnership tier graph reveals offshore flow",
+      "gao_reference": {
+        "id": "C4-E7",
+        "title": "IRS Pass-Through Entity Audit Gap",
+        "section": "Category 4",
+        "mapping": "Multi-tier partnership chain with foreign-flow through 4 layers; validates K-1 graph analytics."
+      },
+      "gao_problem_category": "Tax compliance / pass-through",
+      "features_under_test": [
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Tier-4 partnership graph shows $84M of income flowing through 12 partnerships, terminating at 3 foreign blocker entities in low-tax jurisdictions; final K-1 reports zero US-source income.",
+      "synthetic_input_data": {
+        "tier_depth": 4,
+        "partnership_count": 12,
+        "income_flow_usd_m": 84.0,
+        "terminal_foreign_entities": 3,
+        "foreign_jurisdictions": [
+          "KY",
+          "BM",
+          "BVI"
+        ],
+        "us_source_reported_usd": 0.0
+      },
+      "triggered_workflow": "M5 K-1 graph build -> M6 evasion-risk score -> exam selection",
+      "expected_system_behavior": "M5 resolves K-1 chains across partnerships; M6 flags terminal foreign concentration; exam selection priority elevated.",
+      "expected_output": {
+        "risk_score": 0.89,
+        "alert_type": "PASSTHROUGH_FOREIGN_FLOW",
+        "anomaly_class": "Multi-tier K-1 graph + foreign blocker",
+        "compliance_violation": "IRC §6038, §6662, §367",
+        "recommended_action": "Open partnership audit (BBA); coordinate with LB&I"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='PASSTHROUGH_FOREIGN_FLOW', risk_score within ±0.05 of 0.89, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-043",
+      "title": "Crypto on-chain attribution to non-filer",
+      "gao_reference": {
+        "id": "C4-E8",
+        "title": "IRS Cryptocurrency Compliance Gap",
+        "section": "Category 4",
+        "mapping": "Broker 1099-DA absent; on-chain analytics attributes wallet to taxpayer who reported no gain; validates wallet-attribution ML."
+      },
+      "gao_problem_category": "Tax compliance / digital assets",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Wallet 0xA9..71 shows $1.8M of realized 2025 gains; cluster analytics + 2 exchange KYC records attribute wallet to taxpayer TIN-end 4471 who filed Form 1040 reporting $0 digital-asset gain.",
+      "synthetic_input_data": {
+        "wallet_addr": "0xA94c...71",
+        "realized_gain_2025_usd": 1800000.0,
+        "exchange_kyc_matches": 2,
+        "attribution_confidence": 0.91,
+        "form_1040_reported_gain_usd": 0.0
+      },
+      "triggered_workflow": "M5 wallet attribution -> M2 underreporting flag -> CI referral",
+      "expected_system_behavior": "M5 resolves wallet to TIN with confidence > 0.9; M2 flags $1.8M underreport; case routed for examination.",
+      "expected_output": {
+        "risk_score": 0.86,
+        "alert_type": "CRYPTO_UNDERREPORT",
+        "anomaly_class": "On-chain attribution vs return",
+        "compliance_violation": "IRC §61, §6045 (broker), §6662",
+        "recommended_action": "Open exam; consider 26 USC §7201 referral"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='CRYPTO_UNDERREPORT', risk_score within ±0.05 of 0.86, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-044",
+      "title": "VA community-care prior-auth mismatch",
+      "gao_reference": {
+        "id": "C4-E9",
+        "title": "VA Community Care Payment Integrity",
+        "section": "Category 4",
+        "mapping": "Claim DOS outside authorization window; validates pre-payment auth match."
+      },
+      "gao_problem_category": "Payment integrity",
+      "features_under_test": [
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        }
+      ],
+      "scenario_description": "VA CCN claim for $7,210 (CPT 27130) dated 2026-04-22 references authorization VACA-114882 whose validity window expired 2026-04-15.",
+      "synthetic_input_data": {
+        "claim_id": "VACC-2026-022918",
+        "cpt": "27130",
+        "amount_usd": 7210.0,
+        "dos": "2026-04-22",
+        "auth_id": "VACA-114882",
+        "auth_valid_until": "2026-04-15"
+      },
+      "triggered_workflow": "M4 pre-payment auth check -> deny",
+      "expected_system_behavior": "M4 detects DOS outside auth window; claim denied with reason code.",
+      "expected_output": {
+        "risk_score": 0.7,
+        "alert_type": "AUTH_WINDOW_VIOLATION",
+        "anomaly_class": "DOS outside authorization",
+        "compliance_violation": "38 CFR 17.4040 / VA CCN provider manual",
+        "recommended_action": "Deny claim; require new authorization"
+      },
+      "test_type": "Unit",
+      "pass_fail_criteria": "PASS if alert_type='AUTH_WINDOW_VIOLATION', risk_score within ±0.05 of 0.7, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-045",
+      "title": "Title IV institutional risk score crosses threshold",
+      "gao_reference": {
+        "id": "C4-E10",
+        "title": "Federal Student Aid Institution Oversight",
+        "section": "Category 4",
+        "mapping": "Cohort default rate, withdrawal rate, complaint signals together breach threshold; validates institution-level risk scoring."
+      },
+      "gao_problem_category": "Institutional oversight",
+      "features_under_test": [
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Institution OPEID 03311900 shows CDR=22%, 90/10 ratio=89.2%, withdrawal rate up 41% YoY, and CFPB complaint volume in 95th percentile.",
+      "synthetic_input_data": {
+        "opeid": "03311900",
+        "cdr": 0.22,
+        "ratio_90_10": 0.892,
+        "withdrawal_rate_yoy_change": 0.41,
+        "complaint_percentile": 0.95
+      },
+      "triggered_workflow": "M6 institution ML risk -> M3 PPA / HCM tier",
+      "expected_system_behavior": "M6 returns composite risk; M3 elevates institution to HCM2 with increased monitoring and possible LOC requirement.",
+      "expected_output": {
+        "risk_score": 0.83,
+        "alert_type": "TITLE_IV_INSTITUTION_RISK",
+        "anomaly_class": "Multi-indicator threshold breach",
+        "compliance_violation": "34 CFR 668.171 (financial responsibility)",
+        "recommended_action": "Place on HCM2; require LOC; initiate program review"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='TITLE_IV_INSTITUTION_RISK', risk_score within ±0.05 of 0.83, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-046",
+      "title": "Pell fraud ring at low-touch online institution",
+      "gao_reference": {
+        "id": "C4-E11",
+        "title": "Pell Grant Fraud Rings at Low-Touch Institutions",
+        "section": "Category 4",
+        "mapping": "Cluster of synthetic students from shared device/IP at one online institution; validates identity-graph + behavioral signals."
+      },
+      "gao_problem_category": "Identity fraud / student aid",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "On a single institution's enrollment system, 74 Pell-eligible applications arrive in 6 hours from 9 device fingerprints and share 3 mailing addresses; attendance click-stream is automated (uniform inter-event timing).",
+      "synthetic_input_data": {
+        "opeid": "04477100",
+        "applications": 74,
+        "device_fingerprints": 9,
+        "shared_mailing_addresses": 3,
+        "clickstream_entropy": 0.11
+      },
+      "triggered_workflow": "M5 identity graph -> M2 ring score -> M4 hold disbursement",
+      "expected_system_behavior": "M2 returns ring-cluster probability > 0.9; M4 places disbursement holds and notifies institution.",
+      "expected_output": {
+        "risk_score": 0.92,
+        "alert_type": "PELL_RING_LOWTOUCH_INSTITUTION",
+        "anomaly_class": "Device-IP cluster + automated attendance",
+        "compliance_violation": "34 CFR 668.16(g) (admin capability)",
+        "recommended_action": "Hold disbursements; refer to ED FSA fraud unit; institution review"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='PELL_RING_LOWTOUCH_INSTITUTION', risk_score within ±0.05 of 0.92, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-047",
+      "title": "Medicare Advantage HCC chart-review upcoding",
+      "gao_reference": {
+        "id": "C4-E22",
+        "title": "Medicare Advantage Risk Adjustment Upcoding",
+        "section": "Category 4",
+        "mapping": "Chart reviews add HCCs without supporting encounter; validates NLP risk-adjustment integrity."
+      },
+      "gao_problem_category": "Healthcare fraud / risk adjustment",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "MA plan adds HCC 18 (Diabetes w/ Acute Complications) to 1,884 enrollees solely via retrospective chart reviews without any encounter-level claim for diabetes complications in the look-back.",
+      "synthetic_input_data": {
+        "contract_id": "H1234",
+        "added_hcc": "HCC18",
+        "members_affected": 1884,
+        "encounter_support_pct": 0.07,
+        "ra_payment_impact_usd_m": 12.3
+      },
+      "triggered_workflow": "M2 NLP chart vs claim reconciliation -> M6 plan-level outlier ranking",
+      "expected_system_behavior": "M2 reconciles chart-review HCCs against encounter claims; M6 ranks plan in top decile of unsupported-HCC concentration.",
+      "expected_output": {
+        "risk_score": 0.85,
+        "alert_type": "RA_UPCODING_PATTERN",
+        "anomaly_class": "Chart-review HCCs without encounter support",
+        "compliance_violation": "42 CFR 422.310 (RAPS/EDS data submission)",
+        "recommended_action": "RADV-style review; payment recovery; FCA referral consideration"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='RA_UPCODING_PATTERN', risk_score within ±0.05 of 0.85, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-048",
+      "title": "Forced-labor UFLPA importer pattern detection",
+      "gao_reference": {
+        "id": "C4-E23",
+        "title": "CBP Forced Labor Enforcement (UFLPA)",
+        "section": "Category 4",
+        "mapping": "Importer pivots sourcing to third-country transshipment after WRO; validates supply-chain forensics."
+      },
+      "gao_problem_category": "Trade compliance / forced labor",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Importer 'NorthRing Apparel' decreases direct China imports of HTS 6109.10 by 92% post-WRO but increases imports of same HTS from VN by 410%; satellite-derived port flows show VN exports originating from Chinese suppliers under WRO.",
+      "synthetic_input_data": {
+        "importer_uei": "NORAPP-UEI-552241",
+        "hts": "6109.10",
+        "china_import_change_pct": -0.92,
+        "vietnam_import_change_pct": 4.1,
+        "satellite_supplier_match": 0.78
+      },
+      "triggered_workflow": "M5 supplier-port graph -> M2 transshipment pattern -> CBP referral",
+      "expected_system_behavior": "M5 builds supplier-port-importer graph; M2 detects transshipment + satellite-supplier link; case raised for CBP.",
+      "expected_output": {
+        "risk_score": 0.84,
+        "alert_type": "UFLPA_TRANSSHIPMENT_SUSPECTED",
+        "anomaly_class": "Post-WRO sourcing pivot + satellite confirmation",
+        "compliance_violation": "UFLPA / 19 USC 1307",
+        "recommended_action": "Detain shipments; require rebuttable presumption documentation"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='UFLPA_TRANSSHIPMENT_SUSPECTED', risk_score within ±0.05 of 0.84, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-049",
+      "title": "OFAC sanctions evasion via shell + crypto bridge",
+      "gao_reference": {
+        "id": "C4-E24",
+        "title": "Treasury Sanctions Evasion Detection",
+        "section": "Category 4",
+        "mapping": "Beneficial owner hidden behind 3-layer shell chain with crypto bridge; validates BOI + blockchain analytics integration."
+      },
+      "gao_problem_category": "Sanctions",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Wire flow of $14.2M from sanctioned entity through 3 EU shells into a US LLC; FinCEN BOI identifies common beneficial owner; secondary leg traverses crypto bridge with cluster overlap.",
+      "synthetic_input_data": {
+        "sdn_party_id": "OFAC-SDN-1118",
+        "shell_layers": 3,
+        "us_llc_uei": "TARGET-UEI-771122",
+        "boi_common_owner": true,
+        "crypto_bridge_cluster_match": 0.83,
+        "wire_amount_usd": 14200000.0
+      },
+      "triggered_workflow": "M5 BOI + chain analytics -> M2 sanctions-evasion score -> OFAC referral",
+      "expected_system_behavior": "M5 resolves common owner across shells; M2 builds evasion graph including crypto leg; alert raised for OFAC.",
+      "expected_output": {
+        "risk_score": 0.91,
+        "alert_type": "SANCTIONS_EVASION_DETECTED",
+        "anomaly_class": "Shell-chain + crypto bridge + BOI match",
+        "compliance_violation": "IEEPA / OFAC regulations",
+        "recommended_action": "Block transaction; SAR filing; refer to OFAC"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='SANCTIONS_EVASION_DETECTED', risk_score within ±0.05 of 0.91, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-050",
+      "title": "SEC spoofing pattern in equities (cancel-to-fill ratio)",
+      "gao_reference": {
+        "id": "C4-E25",
+        "title": "SEC Market Surveillance Latency",
+        "section": "Category 4",
+        "mapping": "CAT-derived order patterns show layering/spoofing; validates streaming surveillance ML."
+      },
+      "gao_problem_category": "Market manipulation",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        }
+      ],
+      "scenario_description": "Trader-id TRD-7702 places 91 large sell orders within 4 minutes on TICKER X, cancels 98% before execution, then completes a buy 220 ms after cancellations across L2 book.",
+      "synthetic_input_data": {
+        "trader_id": "TRD-7702",
+        "ticker": "X",
+        "window_seconds": 240,
+        "orders_placed": 91,
+        "cancel_pct": 0.98,
+        "post_cancel_buy_lag_ms": 220,
+        "size_p99_ratio": 5.4
+      },
+      "triggered_workflow": "M1 streaming pattern -> M2 manipulation classifier -> case file",
+      "expected_system_behavior": "M1 detects high cancel-to-fill ratio + asymmetric buy; M2 classifies as layering/spoofing; case generated for SEC.",
+      "expected_output": {
+        "risk_score": 0.92,
+        "alert_type": "SPOOFING_LAYERING",
+        "anomaly_class": "High cancel ratio + post-cancel directional fill",
+        "compliance_violation": "15 USC 78i(a)(2); Dodd-Frank §747",
+        "recommended_action": "Open SEC enforcement matter; alert exchange compliance"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='SPOOFING_LAYERING', risk_score within ±0.05 of 0.92, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-051",
+      "title": "Universal DNP API low-latency screening at scale",
+      "gao_reference": {
+        "id": "C5-E1",
+        "title": "Fragmented Do Not Pay Database Access",
+        "section": "Category 5",
+        "mapping": "Federated DNP API call across DMF, SAM exclusions, OFAC, CAIVRS at <500ms; validates infra performance + correctness."
+      },
+      "gao_problem_category": "Infrastructure / pre-payment",
+      "features_under_test": [
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        }
+      ],
+      "scenario_description": "10,000 disbursement candidates submitted in parallel; system must return DNP composite verdict in <500ms p95 with correct fanout to 4 sources.",
+      "synthetic_input_data": {
+        "batch_size": 10000,
+        "sources": [
+          "DMF",
+          "SAM_EXCL",
+          "OFAC",
+          "CAIVRS"
+        ],
+        "target_p95_ms": 500,
+        "expected_hit_rate": 0.014
+      },
+      "triggered_workflow": "M4 parallel fanout -> aggregated verdict",
+      "expected_system_behavior": "M4 returns aggregated verdict within SLA; hit rate matches seeded test fixtures.",
+      "expected_output": {
+        "risk_score": "N/A (performance)",
+        "alert_type": "DNP_BATCH_VERDICT",
+        "anomaly_class": "n/a (infra)",
+        "compliance_violation": "n/a",
+        "recommended_action": "Pass if p95<500ms and hit rate matches fixtures"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='DNP_BATCH_VERDICT' and recommended_action matches expected operational outcome; performance SLAs met. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-052",
+      "title": "DMF latency-driven post-death payment",
+      "gao_reference": {
+        "id": "C5-E2",
+        "title": "Death Master File Update Latency",
+        "section": "Category 5",
+        "mapping": "Real-time state vital-records arrives in DNP before SSA DMF; validates state-level vital-records integration."
+      },
+      "gao_problem_category": "Pre-payment data freshness",
+      "features_under_test": [
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "State vital-records feed reports death on 2026-03-12; SSA DMF would batch-update on 2026-04-01; meanwhile, on 2026-03-18, two federal payments are pending.",
+      "synthetic_input_data": {
+        "decedent_id_hash": "sha256:eb44...801",
+        "state_vital_record_date": "2026-03-12",
+        "expected_dmf_update_date": "2026-04-01",
+        "pending_payments": [
+          {
+            "program": "SSA-RIB",
+            "amount_usd": 2104.0,
+            "date": "2026-03-18"
+          },
+          {
+            "program": "VA-Pension",
+            "amount_usd": 1380.0,
+            "date": "2026-03-22"
+          }
+        ]
+      },
+      "triggered_workflow": "M5 state vital-records ingest -> M4 DNP enrichment -> block",
+      "expected_system_behavior": "M5 propagates state record into DNP feed; M4 blocks both pending payments before legacy DMF update.",
+      "expected_output": {
+        "risk_score": 0.97,
+        "alert_type": "PRE_DMF_DECEDENT_BLOCK",
+        "anomaly_class": "Vital-records freshness",
+        "compliance_violation": "Payment Integrity Information Act (PIIA)",
+        "recommended_action": "Block both payments; notify SSA and VA"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='PRE_DMF_DECEDENT_BLOCK', risk_score within ±0.05 of 0.97, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-053",
+      "title": "Bank account ownership mismatch at disbursement",
+      "gao_reference": {
+        "id": "C5-E5",
+        "title": "No Real-Time Bank Account Verification",
+        "section": "Category 5",
+        "mapping": "Recipient name does not match bank account holder; validates account-verification at pay time."
+      },
+      "gao_problem_category": "Disbursement integrity",
+      "features_under_test": [
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        }
+      ],
+      "scenario_description": "SBA loan disbursement $148,200 targets account at credit union; account-ownership verification returns name mismatch (account holder: 'Hawk Capital Holdings' vs recipient: 'Maple Bake & Brew LLC').",
+      "synthetic_input_data": {
+        "loan_id": "SBA-2026-7A-118842",
+        "recipient_name": "Maple Bake & Brew LLC",
+        "account_holder_name": "Hawk Capital Holdings",
+        "ownership_match_score": 0.12,
+        "amount_usd": 148200.0
+      },
+      "triggered_workflow": "M4 account ownership verification -> block",
+      "expected_system_behavior": "M4 blocks disbursement, requires recipient to update banking info matching legal entity name.",
+      "expected_output": {
+        "risk_score": 0.95,
+        "alert_type": "ACCOUNT_OWNERSHIP_MISMATCH",
+        "anomaly_class": "Recipient<->account name mismatch",
+        "compliance_violation": "31 USC 3325 (disbursement integrity)",
+        "recommended_action": "Block; require updated SAM banking; lender review"
+      },
+      "test_type": "Unit",
+      "pass_fail_criteria": "PASS if alert_type='ACCOUNT_OWNERSHIP_MISMATCH', risk_score within ±0.05 of 0.95, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-054",
+      "title": "Cross-program duplicate beneficiary (UI + SSDI)",
+      "gao_reference": {
+        "id": "C5-E6",
+        "title": "No Cross-Program Duplicate Beneficiary Detection",
+        "section": "Category 5",
+        "mapping": "Beneficiary actively receiving SSDI also collects UI for >SGA work; validates cross-program privacy-preserving match."
+      },
+      "gao_problem_category": "Cross-program overlap",
+      "features_under_test": [
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Hashed beneficiary draws SSDI ($1,510/mo) and concurrently files UI claims in TX for $480/wk based on prior employer earnings — potential SGA breach and program-rule inconsistency.",
+      "synthetic_input_data": {
+        "beneficiary_hash": "sha256:0a91...44b",
+        "ssdi_monthly_usd": 1510.0,
+        "ui_weekly_usd": 480.0,
+        "prior_quarter_earnings_usd": 9120.0,
+        "concurrent_months": 4
+      },
+      "triggered_workflow": "M5 cross-program PPRL -> M6 inconsistency score -> case open",
+      "expected_system_behavior": "M5 finds privacy-preserving match between SSDI roster and TX UI claimant list; M6 scores inconsistency; SSA + state notified.",
+      "expected_output": {
+        "risk_score": 0.74,
+        "alert_type": "CROSS_PROGRAM_OVERLAP",
+        "anomaly_class": "Concurrent SSDI + UI base wages",
+        "compliance_violation": "20 CFR 404.1574 / state UI",
+        "recommended_action": "Open SSA CDR; refer to state UI for re-determination"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='CROSS_PROGRAM_OVERLAP', risk_score within ±0.05 of 0.74, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-055",
+      "title": "Shared device intelligence catches IRS-then-VA fraud",
+      "gao_reference": {
+        "id": "C5-E8",
+        "title": "No Shared IP/Device Threat Intelligence",
+        "section": "Category 5",
+        "mapping": "Device fingerprint used for 188 fraudulent tax returns now appears on VA caregiver claim; validates shared intel."
+      },
+      "gao_problem_category": "Threat intelligence",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Device fingerprint DFP-7820 (linked to GG-TC-020 cohort) appears on 14 VA caregiver enrollment applications; system must surface cross-program risk.",
+      "synthetic_input_data": {
+        "device_fingerprint": "DFP-7820",
+        "prior_fraud_link": "GG-TC-020",
+        "current_program": "VA-Caregiver",
+        "new_applications": 14
+      },
+      "triggered_workflow": "M5 shared intel lookup -> M2 cohort cross-program flag",
+      "expected_system_behavior": "M5 returns prior-fraud association; M2 elevates 14 caregiver applications to high risk.",
+      "expected_output": {
+        "risk_score": 0.92,
+        "alert_type": "CROSS_PROGRAM_DEVICE_REUSE",
+        "anomaly_class": "Known-fraud device on new program",
+        "compliance_violation": "n/a (intel match)",
+        "recommended_action": "Hold all 14 applications; open VA OIG case"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='CROSS_PROGRAM_DEVICE_REUSE', risk_score within ±0.05 of 0.92, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-056",
+      "title": "Synthetic identity via eCBSV mismatch",
+      "gao_reference": {
+        "id": "C5-E9",
+        "title": "No Unified Synthetic Identity Defense",
+        "section": "Category 5",
+        "mapping": "SSN valid but name/DOB do not match SSA; validates eCBSV-based synthetic-ID defense."
+      },
+      "gao_problem_category": "Identity integrity",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        }
+      ],
+      "scenario_description": "SBA 7(a) applicant SSN passes formatting + structure but eCBSV check returns 'no match' on name and DOB; credit-bureau file shows thin/young file.",
+      "synthetic_input_data": {
+        "loan_id": "SBA-2026-7A-127991",
+        "ecbsv_match": "no_match",
+        "credit_file_age_months": 8,
+        "credit_inquiries_last_6mo": 11,
+        "amount_usd": 380000.0
+      },
+      "triggered_workflow": "M4 eCBSV gate -> M2 synthetic-ID classifier -> reject",
+      "expected_system_behavior": "M4 fails eCBSV match; M2 elevates synthetic-ID probability; loan application rejected with reason code.",
+      "expected_output": {
+        "risk_score": 0.93,
+        "alert_type": "SYNTHETIC_ID_ECBSV_MISMATCH",
+        "anomaly_class": "SSN valid + identity mismatch + thin file",
+        "compliance_violation": "FCRA / SBA SOP eligibility",
+        "recommended_action": "Reject application; flag SSN for future review"
+      },
+      "test_type": "Unit",
+      "pass_fail_criteria": "PASS if alert_type='SYNTHETIC_ID_ECBSV_MISMATCH', risk_score within ±0.05 of 0.93, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-057",
+      "title": "Cross-program provider integrity (Medicare + Medicaid + TRICARE)",
+      "gao_reference": {
+        "id": "C5-E14",
+        "title": "No Standardized Provider Enrollment Integrity",
+        "section": "Category 5",
+        "mapping": "Provider sanctioned by one program continues to bill another; validates shared provider integrity."
+      },
+      "gao_problem_category": "Provider integrity",
+      "features_under_test": [
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Provider NPI 1559002288 was revoked by Medicare on 2026-01-08 but continues to bill TX Medicaid and TRICARE; shared registry should propagate revocation.",
+      "synthetic_input_data": {
+        "provider_npi": "1559002288",
+        "medicare_revocation_date": "2026-01-08",
+        "tx_medicaid_claims_post_revoke": 142,
+        "tricare_claims_post_revoke": 38
+      },
+      "triggered_workflow": "M5 cross-program provider registry -> M4 block claims",
+      "expected_system_behavior": "M5 distributes revocation to Medicaid + TRICARE registries; M4 blocks all subsequent claims.",
+      "expected_output": {
+        "risk_score": 0.93,
+        "alert_type": "CROSS_PROGRAM_REVOKED_PROVIDER",
+        "anomaly_class": "Cross-registry revocation propagation",
+        "compliance_violation": "42 CFR 1003 / 42 USC 1320a-7",
+        "recommended_action": "Block claims; recover post-revocation payments"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='CROSS_PROGRAM_REVOKED_PROVIDER', risk_score within ±0.05 of 0.93, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-058",
+      "title": "Federated case-management linkage across OIGs",
+      "gao_reference": {
+        "id": "C5-E16",
+        "title": "No Common Fraud Case Management",
+        "section": "Category 5",
+        "mapping": "Same defendant has open cases at HHS-OIG and SSA-OIG; validates federated entity linking."
+      },
+      "gao_problem_category": "Investigative coordination",
+      "features_under_test": [
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Entity 'Atlas Med Group' has open enforcement matter at HHS-OIG (DME fraud) and active fraud referral at SSA-OIG (ghost-employee scheme); both unaware of the other.",
+      "synthetic_input_data": {
+        "entity_uei": "ATLMED-UEI-779921",
+        "hhs_oig_case": "HHS-OIG-2026-DME-44188",
+        "ssa_oig_case": "SSA-OIG-2026-GE-91200"
+      },
+      "triggered_workflow": "M5 federated entity link -> joint case alert",
+      "expected_system_behavior": "M5 resolves entity across systems and emits joint-case alert with coordination recommendation.",
+      "expected_output": {
+        "risk_score": 0.71,
+        "alert_type": "CROSS_OIG_ENTITY_LINK",
+        "anomaly_class": "Cross-investigation entity overlap",
+        "compliance_violation": "n/a (coordination)",
+        "recommended_action": "Open joint task-force engagement; share evidence under MOU"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='CROSS_OIG_ENTITY_LINK', risk_score within ±0.05 of 0.71, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-059",
+      "title": "Pre-award integrity score blocks risky grantee",
+      "gao_reference": {
+        "id": "C5-E25",
+        "title": "No Real-Time Pre-Award Risk Scoring",
+        "section": "Category 5",
+        "mapping": "Grantee has SAM exclusion sibling + BOI overlap with debarred party + weak financial-health signals; validates pre-award integrity."
+      },
+      "gao_problem_category": "Pre-award integrity",
+      "features_under_test": [
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        },
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "Grant applicant 'Skyline Research Foundation' (UEI SKYRF-...) is independent of any exclusion record itself, but shares beneficial owner with debarred entity 'Marlow Sciences LLC' and shows 4 missed pass-through audits.",
+      "synthetic_input_data": {
+        "applicant_uei": "SKYRF-UEI-002211",
+        "boi_overlap_debarred": true,
+        "debarred_party": "Marlow Sciences LLC",
+        "missed_single_audits": 4,
+        "financial_health_score": 0.21,
+        "requested_award_usd": 2400000.0
+      },
+      "triggered_workflow": "M5 BOI lookup -> M3 grant compliance gate -> M4 pre-award hold",
+      "expected_system_behavior": "M5 finds BOI overlap with debarred party; M3 surfaces audit-delinquency; M4 holds award pending review.",
+      "expected_output": {
+        "risk_score": 0.88,
+        "alert_type": "PRE_AWARD_INTEGRITY_FAIL",
+        "anomaly_class": "Multi-factor pre-award risk",
+        "compliance_violation": "2 CFR 200.206 (risk review)",
+        "recommended_action": "Hold award; require remediation plan or selection alternative"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='PRE_AWARD_INTEGRITY_FAIL', risk_score within ±0.05 of 0.88, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-060",
+      "title": "Recipient continuous-monitoring burn-rate anomaly",
+      "gao_reference": {
+        "id": "C5-E26",
+        "title": "No Shared Post-Award Monitoring Telemetry",
+        "section": "Category 5",
+        "mapping": "Grantee burns 78% of year-1 budget in Q1; validates ML burn-rate + milestone monitoring."
+      },
+      "gao_problem_category": "Post-award monitoring",
+      "features_under_test": [
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Recipient on $4.8M cooperative agreement bills $3.74M in Q1 (78% of year-1 budget) with no Phase-1 milestone deliverable logged; consent-based telemetry confirms expenditures.",
+      "synthetic_input_data": {
+        "award_id": "CA-2026-OPHS-1187",
+        "year1_budget_usd": 4800000.0,
+        "q1_burn_usd": 3740000.0,
+        "milestones_completed_q1": 0,
+        "milestones_planned_q1": 2
+      },
+      "triggered_workflow": "M3 telemetry ingest -> M6 burn-rate ML -> case open",
+      "expected_system_behavior": "M3 ingests recipient telemetry; M6 flags burn-vs-milestone divergence; PO notified.",
+      "expected_output": {
+        "risk_score": 0.79,
+        "alert_type": "BURN_RATE_MILESTONE_DIVERGENCE",
+        "anomaly_class": "Spend without performance",
+        "compliance_violation": "2 CFR 200.305(b) (advance payments)",
+        "recommended_action": "Pause drawdowns; require corrective action plan"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='BURN_RATE_MILESTONE_DIVERGENCE', risk_score within ±0.05 of 0.79, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-061",
+      "title": "Federal real-property utilization vs lease cost",
+      "gao_reference": {
+        "id": "C1-E12",
+        "title": "Federal Real Property Underutilization",
+        "section": "Category 1",
+        "mapping": "Badge-swipe + Wi-Fi telemetry show <22% occupancy on $14M/yr lease; validates utilization analytics."
+      },
+      "gao_problem_category": "Waste / real property",
+      "features_under_test": [
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Building #FAB-22 lease cost $14.2M/yr; badge-swipe shows 21.8% mean daily occupancy over 90 days; market-rate benchmark suggests consolidation NPV of $26M over 5 years.",
+      "synthetic_input_data": {
+        "building_id": "FAB-22",
+        "annual_lease_usd": 14200000.0,
+        "mean_occupancy_pct": 0.218,
+        "consolidation_npv_5y_usd": 26000000.0
+      },
+      "triggered_workflow": "M6 utilization model -> consolidation recommendation",
+      "expected_system_behavior": "M6 ranks building in top decile for consolidation; produces consolidation NPV with confidence.",
+      "expected_output": {
+        "risk_score": 0.65,
+        "alert_type": "REAL_PROPERTY_UNDERUTILIZATION",
+        "anomaly_class": "Low occupancy + high cost",
+        "compliance_violation": "FASTA / GSA consolidation guidance",
+        "recommended_action": "Initiate consolidation; target dispose at next break clause"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='REAL_PROPERTY_UNDERUTILIZATION', risk_score within ±0.05 of 0.65, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-062",
+      "title": "Unused software license true-down",
+      "gao_reference": {
+        "id": "C1-E13",
+        "title": "Unused Federal Software Licenses",
+        "section": "Category 1",
+        "mapping": "ServiceNow seats with <30-day activity at 41%; validates SAM platform."
+      },
+      "gao_problem_category": "Waste / software",
+      "features_under_test": [
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Enterprise ServiceNow contract: 18,000 seats, 41% inactive >30 days, true-down to 11,200 yields $4.8M/yr savings.",
+      "synthetic_input_data": {
+        "contract_id": "NV-SaaS-22018",
+        "seats": 18000,
+        "inactive_pct_30d": 0.41,
+        "true_down_target": 11200,
+        "annual_savings_usd": 4800000.0
+      },
+      "triggered_workflow": "M6 SAM analytics -> true-down recommendation",
+      "expected_system_behavior": "M6 forecasts seat need; recommends true-down at renewal with buffer.",
+      "expected_output": {
+        "risk_score": 0.4,
+        "alert_type": "SAM_TRUE_DOWN_RECOMMENDED",
+        "anomaly_class": "Low utilization vs entitlement",
+        "compliance_violation": "n/a (efficiency)",
+        "recommended_action": "Negotiate true-down to 11,200 seats at renewal"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='SAM_TRUE_DOWN_RECOMMENDED', risk_score within ±0.05 of 0.4, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-063",
+      "title": "Customs de minimis abuse cluster",
+      "gao_reference": {
+        "id": "C1-E29",
+        "title": "Customs Duty Evasion (de minimis abuse)",
+        "section": "Category 1",
+        "mapping": "Shipper splits one order into 18 sub-$800 packages to abuse Section 321; validates shipper-anomaly ML."
+      },
+      "gao_problem_category": "Trade / duty evasion",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        }
+      ],
+      "scenario_description": "Shipper 'ZenForm Goods' generates 18 individual Section 321 shipments to a single US consignee within 24h totaling $14,180 declared value (avg $787).",
+      "synthetic_input_data": {
+        "shipper": "ZenForm Goods",
+        "consignee_addr_hash": "sha256:f100...221",
+        "shipments_24h": 18,
+        "avg_value_usd": 787.78,
+        "aggregate_usd": 14180.0,
+        "hts_consistency_jaccard": 0.92
+      },
+      "triggered_workflow": "M1 aggregation pattern -> M2 de minimis abuse score",
+      "expected_system_behavior": "M1 sums same-consignee Section 321 entries; M2 flags as splitting; CBP review queued.",
+      "expected_output": {
+        "risk_score": 0.79,
+        "alert_type": "DE_MINIMIS_SPLITTING",
+        "anomaly_class": "Same-day aggregation across §321 entries",
+        "compliance_violation": "19 USC 1321; 19 CFR 10.151",
+        "recommended_action": "Reclassify as single entry; assess duty"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='DE_MINIMIS_SPLITTING', risk_score within ±0.05 of 0.79, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-064",
+      "title": "Insider clearance financial-stress signal",
+      "gao_reference": {
+        "id": "C4-E20",
+        "title": "DoD Security Clearance Integrity",
+        "section": "Category 4",
+        "mapping": "Sudden financial-stress signals on cleared holder; validates continuous vetting (with privacy controls)."
+      },
+      "gao_problem_category": "Insider risk",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Cleared holder shows 60% credit-utilization spike, 4 new delinquencies, and travel to a foreign country flagged by agency policy within 30 days.",
+      "synthetic_input_data": {
+        "subject_id_hash": "sha256:71fa...801",
+        "credit_util_change": 0.6,
+        "new_delinquencies": 4,
+        "foreign_travel_flag": true,
+        "clearance_level": "TS/SCI"
+      },
+      "triggered_workflow": "M1 continuous-vetting signal -> M6 composite risk -> case",
+      "expected_system_behavior": "M1 + M6 compose CV signals with strict privacy controls; case opened for security officer.",
+      "expected_output": {
+        "risk_score": 0.81,
+        "alert_type": "CV_FINANCIAL_FOREIGN_RISK",
+        "anomaly_class": "Compound financial + foreign-travel signal",
+        "compliance_violation": "SEAD 4 adjudicative guidelines (B, F)",
+        "recommended_action": "Refer to FSO; interview under SEAD 3"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='CV_FINANCIAL_FOREIGN_RISK', risk_score within ±0.05 of 0.81, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-065",
+      "title": "Cross-grant double-charging of indirect costs",
+      "gao_reference": {
+        "id": "C1-E27",
+        "title": "Federal Grant Double-Dipping",
+        "section": "Category 1",
+        "mapping": "State pass-through charges same overhead to two federal awards; validates federated cost-charging integrity."
+      },
+      "gao_problem_category": "Grant misuse",
+      "features_under_test": [
+        {
+          "id": "M3",
+          "name": "Grant compliance monitoring"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        }
+      ],
+      "scenario_description": "State agency charges $312k of administrative overhead to both an HHS award and an ED award in the same quarter via two separate JE descriptions referencing the same cost pool.",
+      "synthetic_input_data": {
+        "state_agency": "State Y - Office of Y",
+        "hhs_award_id": "HHS-G-2026-441",
+        "ed_award_id": "ED-G-2026-118",
+        "common_cost_pool_id": "COSTPOOL-OPSADMIN",
+        "duplicated_charge_usd": 312000.0
+      },
+      "triggered_workflow": "M5 cross-award cost-pool match -> M3 unallowable flag",
+      "expected_system_behavior": "M5 fingerprints cost-pool description; M3 flags potential double-allocation; recovery initiated.",
+      "expected_output": {
+        "risk_score": 0.82,
+        "alert_type": "GRANT_DOUBLE_DIP",
+        "anomaly_class": "Same cost pool charged to two awards",
+        "compliance_violation": "2 CFR 200.403 / 200.405",
+        "recommended_action": "Recover duplicate $312k; require updated CAP"
+      },
+      "test_type": "Integration",
+      "pass_fail_criteria": "PASS if alert_type='GRANT_DOUBLE_DIP', risk_score within ±0.05 of 0.82, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-066",
+      "title": "Whistleblower NLP triage with deduplication",
+      "gao_reference": {
+        "id": "C3-E28",
+        "title": "Whistleblower Tip Processing",
+        "section": "Category 3",
+        "mapping": "47 tips reference the same scheme; validates NLP clustering + risk ranking."
+      },
+      "gao_problem_category": "Oversight execution",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "IRS WBO receives 47 tips over 6 months mentioning a specific ERTC promoter (matching GG-TC-005); NLP clusters by entity, ranks high-value tip for examiner.",
+      "synthetic_input_data": {
+        "agency": "IRS-WBO",
+        "tip_count": 47,
+        "entity_mention": "Apex Tax Credits LLC",
+        "cluster_cosine": 0.79,
+        "top_tip_score": 0.91
+      },
+      "triggered_workflow": "M2 NLP clustering -> M6 risk ranking",
+      "expected_system_behavior": "M2 clusters tips; M6 surfaces top tip with award-eligibility estimate.",
+      "expected_output": {
+        "risk_score": 0.86,
+        "alert_type": "WHISTLEBLOWER_CLUSTER",
+        "anomaly_class": "Entity-clustered tip volume",
+        "compliance_violation": "n/a (process)",
+        "recommended_action": "Open IRS WBO case; route to CI"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='WHISTLEBLOWER_CLUSTER', risk_score within ±0.05 of 0.86, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-067",
+      "title": "False-positive: legitimate emergency surge purchase",
+      "gao_reference": {
+        "id": "C1-E23",
+        "title": "Federal P-card misuse (false-positive control)",
+        "section": "Category 1 / control",
+        "mapping": "Genuine emergency micro-purchase split is policy-authorized; validates exception-handling."
+      },
+      "gao_problem_category": "False positive (AI validation)",
+      "features_under_test": [
+        {
+          "id": "M1",
+          "name": "Real-time anomaly detection"
+        },
+        {
+          "id": "M4",
+          "name": "Internal control automation"
+        }
+      ],
+      "scenario_description": "During a declared facility emergency, AO-approved exception permits two same-merchant purchases of $4,200 and $4,000 within 90 minutes; M1 should NOT alert because policy override is logged.",
+      "synthetic_input_data": {
+        "cardholder_id": "GS-PC-509-87412",
+        "emergency_id": "EM-2026-FAC-21",
+        "ao_exception_logged": true,
+        "transactions": [
+          {
+            "amount_usd": 4200.0,
+            "ts": "2026-06-02T14:01:00Z"
+          },
+          {
+            "amount_usd": 4000.0,
+            "ts": "2026-06-02T15:22:00Z"
+          }
+        ]
+      },
+      "triggered_workflow": "M4 policy-exception check -> suppression -> no alert",
+      "expected_system_behavior": "M4 confirms AO exception; M1 suppresses split-purchase alert and tags transactions with exception ID.",
+      "expected_output": {
+        "risk_score": 0.1,
+        "alert_type": "NO_ALERT_POLICY_EXCEPTION",
+        "anomaly_class": "Authorized emergency override",
+        "compliance_violation": "n/a",
+        "recommended_action": "Log for post-event audit; no enforcement"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if system raises no fraud alert; risk_score <= 0.30; context tags applied. FAIL if any fraud alert is generated."
+    },
+    {
+      "test_case_id": "GG-TC-068",
+      "title": "FAR contractor performance scoring across agencies",
+      "gao_reference": {
+        "id": "C5-E23",
+        "title": "No Cross-Agency Contractor Performance Scoring",
+        "section": "Category 5",
+        "mapping": "CPARS narratives across 3 agencies show declining pattern; validates cross-agency NLP scoring."
+      },
+      "gao_problem_category": "Acquisition integrity",
+      "features_under_test": [
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Contractor UEI VTECH-... has 14 CPARS reports across DoD, DHS, HHS: 4 Marginal, 2 Unsatisfactory; sentiment trend is declining; M6 must produce cross-agency composite.",
+      "synthetic_input_data": {
+        "contractor_uei": "VTECH-UEI-118832",
+        "cpars_reports": 14,
+        "marginal_count": 4,
+        "unsat_count": 2,
+        "sentiment_trend_slope": -0.21
+      },
+      "triggered_workflow": "M6 NLP + cross-agency aggregation -> source-selection signal",
+      "expected_system_behavior": "M6 composites CPARS narratives across 3 agencies and emits cross-agency risk score available to CO.",
+      "expected_output": {
+        "risk_score": 0.76,
+        "alert_type": "CROSS_AGENCY_PERFORMANCE_RISK",
+        "anomaly_class": "Declining CPARS narrative sentiment",
+        "compliance_violation": "FAR 9.104 (responsibility)",
+        "recommended_action": "Consider for non-responsibility determination; document review"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='CROSS_AGENCY_PERFORMANCE_RISK', risk_score within ±0.05 of 0.76, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-069",
+      "title": "Recoupment prioritization for high-collectibility cases",
+      "gao_reference": {
+        "id": "C5-E28",
+        "title": "No Standardized Recovery/Recoupment Workflow",
+        "section": "Category 5",
+        "mapping": "Overpayment cases prioritized by ML collectibility; validates recovery workflow."
+      },
+      "gao_problem_category": "Recovery",
+      "features_under_test": [
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Backlog of 14,200 overpayment cases; M6 ranks by ML collectibility (income, asset, employment signals) so collectors target highest-value collectible cases first.",
+      "synthetic_input_data": {
+        "case_count": 14200,
+        "total_outstanding_usd": 94000000.0,
+        "p80_collectibility_cases": 2840,
+        "expected_recovery_p80_usd": 26800000.0
+      },
+      "triggered_workflow": "M6 collectibility ML -> case routing",
+      "expected_system_behavior": "M6 ranks cases; outputs work-queue ordered by expected recovery $ within SLA.",
+      "expected_output": {
+        "risk_score": "N/A (operational)",
+        "alert_type": "RECOVERY_QUEUE_PRIORITIZED",
+        "anomaly_class": "n/a",
+        "compliance_violation": "n/a",
+        "recommended_action": "Pursue top 2,840 cases first; expect $26.8M recovery"
+      },
+      "test_type": "AI/Model Validation",
+      "pass_fail_criteria": "PASS if alert_type='RECOVERY_QUEUE_PRIORITIZED' and recommended_action matches expected operational outcome; performance SLAs met. FAIL otherwise."
+    },
+    {
+      "test_case_id": "GG-TC-070",
+      "title": "Compound scenario: PPP shell + UI fraud + tax refund theft",
+      "gao_reference": {
+        "id": "Composite: C1-E3, C1-E4, C1-E28",
+        "title": "Compound fraud across UI, PPP, and tax refund",
+        "section": "Category 1 (multiple)",
+        "mapping": "Single ring exploits identity weaknesses across three programs; validates cross-program identity-graph + shared device intelligence + composite scoring."
+      },
+      "gao_problem_category": "Compound fraud ring",
+      "features_under_test": [
+        {
+          "id": "M2",
+          "name": "Fraud detection engine"
+        },
+        {
+          "id": "M5",
+          "name": "Cross-entity financial intelligence"
+        },
+        {
+          "id": "M6",
+          "name": "Predictive risk analytics"
+        }
+      ],
+      "scenario_description": "Investigation reveals 6 device fingerprints + 4 banking ABA tied to: 18 multi-state UI claims (from GG-TC-003), 6 PPP applications (from GG-TC-004), and 188 fraudulent e-filed returns (from GG-TC-020); M5 must compose graph across all three program domains.",
+      "synthetic_input_data": {
+        "shared_device_fingerprints": 6,
+        "shared_aba_count": 4,
+        "ui_claims": 18,
+        "ppp_applications": 6,
+        "tax_returns": 188,
+        "aggregate_at_risk_usd": 1860000.0
+      },
+      "triggered_workflow": "M5 cross-program graph -> M2 ring composite -> M6 aggregate exposure",
+      "expected_system_behavior": "M5 builds unified graph across UI, SBA, IRS records; M2 produces ring-level composite probability; M6 outputs aggregate financial exposure and recommends multi-agency task force.",
+      "expected_output": {
+        "risk_score": 0.98,
+        "alert_type": "MULTI_PROGRAM_RING",
+        "anomaly_class": "Cross-domain identity-graph cluster",
+        "compliance_violation": "18 USC 1343 (wire fraud); 26 USC §7206; SBA statutes",
+        "recommended_action": "Open MAGIC-style task force (DOJ + state UI + SBA OIG + IRS-CI); freeze all linked accounts"
+      },
+      "test_type": "End-to-End",
+      "pass_fail_criteria": "PASS if alert_type='MULTI_PROGRAM_RING', risk_score within ±0.05 of 0.98, anomaly_class matches, recommended_action text contains key tokens. FAIL otherwise."
+    }
+  ]
+}
