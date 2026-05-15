@@ -163,9 +163,18 @@ async def get_current_user_or_service(
         role = request.headers.get("X-User-Role", "finance_staff")
         if not tenant_id:
             raise AuthenticationError("Missing X-Tenant-ID header")
+        # Auth0 sub (e.g. "auth0|abc123") is not a UUID — fall back to default
+        try:
+            parsed_user_id = UUID(user_id)
+        except (ValueError, AttributeError):
+            parsed_user_id = UUID("00000000-0000-0000-0000-000000000001")
+        try:
+            parsed_tenant_id = UUID(tenant_id)
+        except (ValueError, AttributeError):
+            raise AuthenticationError("Invalid X-Tenant-ID header")
         svc_user = UserContext(
-            id=UUID(user_id),
-            tenant_id=UUID(tenant_id),
+            id=parsed_user_id,
+            tenant_id=parsed_tenant_id,
             cognito_sub="service",
             role=role,
             display_name="Service",
