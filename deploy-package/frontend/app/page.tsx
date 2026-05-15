@@ -49,7 +49,7 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-3">
           <a
-            href="/login"
+            href="/api/auth/login?returnTo=/dashboard"
             className="text-blue-200 hover:text-white text-sm font-medium transition-colors px-4 py-2"
           >
             Sign In
