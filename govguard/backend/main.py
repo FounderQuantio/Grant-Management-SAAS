@@ -94,7 +94,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health", include_in_schema=False)
     async def health() -> dict:
-        return {"status": "ok", "version": "1.0.0"}
+        return {"status": "ok", "version": "1.0.1"}
 
     PREFIX = "/api/v1"
     app.include_router(auth_router,         prefix=f"{PREFIX}/auth",         tags=["Auth"])
