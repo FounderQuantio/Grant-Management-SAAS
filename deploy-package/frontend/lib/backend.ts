@@ -41,6 +41,7 @@ export async function backendProxy(
       method: options.method || "GET",
       headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
+      cache: "no-store",
     });
 
     const data = await res.json();
