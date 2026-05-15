@@ -44,6 +44,17 @@ RULE_AMOUNT_THRESHOLD     = "FDE-009"   # Cat 1 Ex 25 (T&M overbilling)
 RULE_GHOST_VENDOR         = "FDE-010"   # Cat 1 Ex 11 (ghost employee analog)
 RULE_RELATED_PARTY        = "FDE-011"   # Cat 5 Ex 13 (PEP/related-party)
 RULE_CROSS_GRANT_DOUBLE   = "FDE-012"   # Cat 1 Ex 27 (grant double-dipping)
+RULE_LABOR_RATE_MISMATCH  = "FDE-013"   # Cat 2 Labor category T&M mismatch
+RULE_ACQUISITION_OVERRUN  = "FDE-014"   # Cat 2/6 EVM cost-growth / MDAP overrun
+RULE_PROCUREMENT_ROTATION = "FDE-015"   # Cat 1 Ex 26 bid-rigging rotation proxy
+RULE_DEVICE_FINGERPRINT   = "FDE-016"   # Cat 4/2 device-fingerprint ring
+RULE_SYNTHETIC_ID_ECBSV   = "FDE-017"   # Cat 4 SSA E-CBSv synthetic-ID mismatch
+RULE_OIG_ENTITY_LINK      = "FDE-018"   # Cat 5 OIG cross-entity link
+RULE_AUTH_WINDOW_VIOLATION = "FDE-019"  # Cat 3 healthcare auth-window violation
+RULE_CRYPTO_UNDERREPORT   = "FDE-020"   # Cat 5 crypto gain underreporting
+RULE_SPOOFING_CANCEL_RATE = "FDE-021"   # Cat 1 spoofing via order-cancel pattern
+RULE_SANCTIONS_LAYERING   = "FDE-022"   # Cat 5 OFAC sanctions layering / SDN match
+RULE_RA_UPCODING          = "FDE-023"   # Cat 3 risk-adjustment upcoding
 
 
 @dataclass
@@ -90,20 +101,31 @@ class FraudDetectionEngine:
     testable and decoupled from SQLAlchemy sessions.
     """
 
-    # Scoring weights per rule (sum = 10.0 if all triggered → maps to 100)
+    # Scoring weights per rule (×10 = points contribution toward 100-pt composite)
     RULE_WEIGHTS = {
-        RULE_DUPLICATE_EXACT:     2.5,
-        RULE_DUPLICATE_FUZZY:     1.8,
-        RULE_ROUND_DOLLAR:        0.6,
-        RULE_SPLIT_PURCHASE:      1.2,
-        RULE_VENDOR_SAM_EXCLUDED: 3.0,   # Hard block signal
-        RULE_EXCEEDS_BUDGET_CAT:  1.5,
-        RULE_WEEKEND_TRANSACTION: 0.4,
-        RULE_HIGH_VELOCITY:       1.8,
-        RULE_AMOUNT_THRESHOLD:    1.0,
-        RULE_GHOST_VENDOR:        2.0,
-        RULE_RELATED_PARTY:       1.6,
-        RULE_CROSS_GRANT_DOUBLE:  2.0,
+        RULE_DUPLICATE_EXACT:      2.5,
+        RULE_DUPLICATE_FUZZY:      1.8,
+        RULE_ROUND_DOLLAR:         0.6,
+        RULE_SPLIT_PURCHASE:       1.2,
+        RULE_VENDOR_SAM_EXCLUDED:  3.0,   # Hard block signal
+        RULE_EXCEEDS_BUDGET_CAT:   1.5,
+        RULE_WEEKEND_TRANSACTION:  0.4,
+        RULE_HIGH_VELOCITY:        1.8,
+        RULE_AMOUNT_THRESHOLD:     1.0,
+        RULE_GHOST_VENDOR:         2.0,
+        RULE_RELATED_PARTY:        1.6,
+        RULE_CROSS_GRANT_DOUBLE:   2.0,
+        RULE_LABOR_RATE_MISMATCH:  2.5,
+        RULE_ACQUISITION_OVERRUN:  2.5,
+        RULE_PROCUREMENT_ROTATION: 2.5,
+        RULE_DEVICE_FINGERPRINT:   2.5,
+        RULE_SYNTHETIC_ID_ECBSV:   2.5,
+        RULE_OIG_ENTITY_LINK:      2.5,
+        RULE_AUTH_WINDOW_VIOLATION: 3.0,
+        RULE_CRYPTO_UNDERREPORT:   2.5,
+        RULE_SPOOFING_CANCEL_RATE: 2.5,
+        RULE_SANCTIONS_LAYERING:   3.0,   # Hard block signal
+        RULE_RA_UPCODING:          2.5,
     }
 
     def assess(
@@ -122,6 +144,7 @@ class FraudDetectionEngine:
         all_grant_charges: list[dict], # for cross-grant double-dipping
         vendor_risk_tier: str,
         related_party_flag: bool,
+        extra_signals: dict | None = None,  # FDE-013+ extended signal fields
     ) -> FraudAssessment:
         """
         Evaluate all fraud rules against a transaction context.
@@ -140,6 +163,7 @@ class FraudDetectionEngine:
             all_grant_charges=all_grant_charges,
             vendor_risk_tier=vendor_risk_tier,
             related_party_flag=related_party_flag,
+            extra_signals=extra_signals or {},
         )
 
         triggered = [s for s in signals if s.triggered]
@@ -178,6 +202,17 @@ class FraudDetectionEngine:
             self._check_ghost_vendor(ctx),
             self._check_related_party(ctx),
             self._check_cross_grant_double(ctx),
+            self._check_labor_rate_mismatch(ctx),
+            self._check_acquisition_overrun(ctx),
+            self._check_procurement_rotation(ctx),
+            self._check_device_fingerprint(ctx),
+            self._check_synthetic_id_ecbsv(ctx),
+            self._check_oig_entity_link(ctx),
+            self._check_auth_window_violation(ctx),
+            self._check_crypto_underreport(ctx),
+            self._check_spoofing_cancel_rate(ctx),
+            self._check_sanctions_layering(ctx),
+            self._check_ra_upcoding(ctx),
         ]
 
     def _check_duplicate_exact(self, ctx: dict) -> FraudSignal:
@@ -309,11 +344,158 @@ class FraudDetectionEngine:
             sig.evidence = {"duplicate_grant_count": len(grant_ids_with_same_cat), "cost_category": cat}
         return sig
 
+    def _check_labor_rate_mismatch(self, ctx: dict) -> FraudSignal:
+        """FDE-013: Billed labor category doesn't match actual qualifications."""
+        sig = FraudSignal(RULE_LABOR_RATE_MISMATCH, "Labor category rate mismatch", self.RULE_WEIGHTS[RULE_LABOR_RATE_MISMATCH])
+        xs = ctx.get("extra_signals", {})
+        yoe = xs.get("resume_median_yoe")
+        min_yoe = xs.get("lcat_min_yoe")
+        nlp = xs.get("nlp_match_score")
+        if yoe is not None and min_yoe is not None and yoe < min_yoe * 0.5:
+            sig.triggered = True
+            sig.evidence = {"resume_median_yoe": yoe, "lcat_min_yoe": min_yoe}
+        elif nlp is not None and nlp < 0.25:
+            sig.triggered = True
+            sig.evidence = {"nlp_match_score": nlp}
+        return sig
+
+    def _check_acquisition_overrun(self, ctx: dict) -> FraudSignal:
+        """FDE-014: EVM deviation or cost-growth forecast exceeds acceptable bounds."""
+        sig = FraudSignal(RULE_ACQUISITION_OVERRUN, "Acquisition cost overrun / EVM deviation", self.RULE_WEIGHTS[RULE_ACQUISITION_OVERRUN])
+        xs = ctx.get("extra_signals", {})
+        cpi = xs.get("cpi")
+        spi = xs.get("spi")
+        if cpi is not None and spi is not None and cpi < 0.85 and spi < 0.85:
+            sig.triggered = True
+            sig.evidence = {"cpi": cpi, "spi": spi}
+        elif xs.get("predicted_overrun_pct", 0.0) > 0.15:
+            sig.triggered = True
+            sig.evidence = {"predicted_overrun_pct": xs["predicted_overrun_pct"]}
+        elif xs.get("p65_lcc") and xs.get("baseline_lcc"):
+            if xs["p65_lcc"] / xs["baseline_lcc"] > 1.2:
+                sig.triggered = True
+                sig.evidence = {"p65_lcc": xs["p65_lcc"], "baseline_lcc": xs["baseline_lcc"], "ratio": round(xs["p65_lcc"] / xs["baseline_lcc"], 3)}
+        return sig
+
+    def _check_procurement_rotation(self, ctx: dict) -> FraudSignal:
+        """FDE-015: Statistical vendor-rotation pattern consistent with bid rigging."""
+        sig = FraudSignal(RULE_PROCUREMENT_ROTATION, "Procurement vendor rotation (bid-rigging proxy)", self.RULE_WEIGHTS[RULE_PROCUREMENT_ROTATION])
+        xs = ctx.get("extra_signals", {})
+        chi_p = xs.get("rotation_chi_square_p", 1.0)
+        cosine = xs.get("proposal_cosine_max", 0.0)
+        if chi_p < 0.05 and cosine > 0.7:
+            sig.triggered = True
+            sig.evidence = {"rotation_chi_square_p": chi_p, "proposal_cosine_max": cosine}
+        return sig
+
+    def _check_device_fingerprint(self, ctx: dict) -> FraudSignal:
+        """FDE-016: Shared device fingerprint ring or prior fraud linkage."""
+        sig = FraudSignal(RULE_DEVICE_FINGERPRINT, "Device fingerprint ring / shared-device fraud cluster", self.RULE_WEIGHTS[RULE_DEVICE_FINGERPRINT])
+        xs = ctx.get("extra_signals", {})
+        dmc = xs.get("device_match_count")
+        uac = xs.get("unique_applicant_count")
+        if dmc is not None and uac is not None:
+            ratio = dmc / max(uac, 1)
+            if ratio > 5:
+                sig.triggered = True
+                sig.evidence = {"device_match_count": dmc, "unique_applicant_count": uac, "ratio": round(ratio, 1)}
+        if not sig.triggered and xs.get("prior_fraud_link"):
+            sig.triggered = True
+            sig.evidence = {"prior_fraud_link": xs["prior_fraud_link"]}
+        if not sig.triggered and xs.get("clickstream_entropy", 1.0) < 0.2:
+            sig.triggered = True
+            sig.evidence = {"clickstream_entropy": xs["clickstream_entropy"]}
+        return sig
+
+    def _check_synthetic_id_ecbsv(self, ctx: dict) -> FraudSignal:
+        """FDE-017: SSA E-CBSv returns no-match on a thin-file applicant."""
+        sig = FraudSignal(RULE_SYNTHETIC_ID_ECBSV, "Synthetic identity — E-CBSv no-match on thin file", self.RULE_WEIGHTS[RULE_SYNTHETIC_ID_ECBSV])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("ecbsv_match") == "no_match" and xs.get("credit_file_age_months", 99) < 12:
+            sig.triggered = True
+            sig.evidence = {"ecbsv_match": "no_match", "credit_file_age_months": xs["credit_file_age_months"]}
+        return sig
+
+    def _check_oig_entity_link(self, ctx: dict) -> FraudSignal:
+        """FDE-018: Entity linked to an open OIG investigation or exclusion."""
+        sig = FraudSignal(RULE_OIG_ENTITY_LINK, "OIG cross-entity link detected", self.RULE_WEIGHTS[RULE_OIG_ENTITY_LINK])
+        xs = ctx.get("extra_signals", {})
+        oig_fields = ("oig_case_id", "oig_exclusion_date", "oig_match_score",
+                      "oig_entity_id", "hhs_oig_case", "ssa_oig_case")
+        for f in oig_fields:
+            if xs.get(f):
+                sig.triggered = True
+                sig.evidence = {f: xs[f]}
+                break
+        return sig
+
+    def _check_auth_window_violation(self, ctx: dict) -> FraudSignal:
+        """FDE-019: Service rendered after the prior-authorization expiry date."""
+        sig = FraudSignal(RULE_AUTH_WINDOW_VIOLATION, "Service rendered outside authorization window", self.RULE_WEIGHTS[RULE_AUTH_WINDOW_VIOLATION])
+        xs = ctx.get("extra_signals", {})
+        dos = xs.get("dos")
+        auth_until = xs.get("auth_valid_until")
+        if dos and auth_until:
+            try:
+                if str(dos) > str(auth_until):
+                    sig.triggered = True
+                    sig.evidence = {"dos": str(dos), "auth_valid_until": str(auth_until)}
+            except (TypeError, ValueError):
+                pass
+        return sig
+
+    def _check_crypto_underreport(self, ctx: dict) -> FraudSignal:
+        """FDE-020: On-chain realized gain significantly exceeds tax-reported figure."""
+        sig = FraudSignal(RULE_CRYPTO_UNDERREPORT, "Crypto gain underreporting — on-chain vs reported gap", self.RULE_WEIGHTS[RULE_CRYPTO_UNDERREPORT])
+        xs = ctx.get("extra_signals", {})
+        realized = xs.get("realized_gain_usd", 0.0)
+        reported = xs.get("reported_gain_usd", 0.0)
+        confidence = xs.get("attribution_confidence", 0.0)
+        if realized > 0 and confidence > 0.7:
+            underreport_pct = (realized - reported) / realized
+            if underreport_pct > 0.5:
+                sig.triggered = True
+                sig.evidence = {"realized_gain_usd": realized, "reported_gain_usd": reported, "underreport_pct": round(underreport_pct, 3)}
+        return sig
+
+    def _check_spoofing_cancel_rate(self, ctx: dict) -> FraudSignal:
+        """FDE-021: High order-cancellation rate after price observation (spoofing)."""
+        sig = FraudSignal(RULE_SPOOFING_CANCEL_RATE, "Order-spoofing cancellation rate anomaly", self.RULE_WEIGHTS[RULE_SPOOFING_CANCEL_RATE])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("cancel_pct", 0.0) > 0.9 and xs.get("orders_placed", 0) > 20:
+            sig.triggered = True
+            sig.evidence = {"cancel_pct": xs["cancel_pct"], "orders_placed": xs["orders_placed"]}
+        return sig
+
+    def _check_sanctions_layering(self, ctx: dict) -> FraudSignal:
+        """FDE-022: SDN-list match or shell-company layering to evade OFAC sanctions."""
+        sig = FraudSignal(RULE_SANCTIONS_LAYERING, "OFAC sanctions layering / SDN entity match", self.RULE_WEIGHTS[RULE_SANCTIONS_LAYERING])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("sdn_party_id"):
+            sig.triggered = True
+            sig.evidence = {"sdn_party_id": xs["sdn_party_id"]}
+        elif xs.get("shell_layers", 0) >= 2 and xs.get("boi_common_owner"):
+            sig.triggered = True
+            sig.evidence = {"shell_layers": xs["shell_layers"], "boi_common_owner": xs["boi_common_owner"]}
+        return sig
+
+    def _check_ra_upcoding(self, ctx: dict) -> FraudSignal:
+        """FDE-023: Risk-adjustment diagnoses lack supporting encounter documentation."""
+        sig = FraudSignal(RULE_RA_UPCODING, "Risk-adjustment upcoding — insufficient encounter support", self.RULE_WEIGHTS[RULE_RA_UPCODING])
+        xs = ctx.get("extra_signals", {})
+        support_pct = xs.get("encounter_support_pct", 1.0)
+        impact = xs.get("ra_payment_impact_usd_m", 0.0)
+        if support_pct < 0.3 and impact > 1.0:
+            sig.triggered = True
+            sig.evidence = {"encounter_support_pct": support_pct, "ra_payment_impact_usd_m": impact}
+        return sig
+
     # ── Scoring helpers ──────────────────────────────────────────────────
 
     def _tier(self, score: float, triggered: list[FraudSignal]) -> str:
-        # Hard override: SAM excluded always = CRITICAL
-        if any(s.rule_id == RULE_VENDOR_SAM_EXCLUDED for s in triggered):
+        # Hard overrides: always CRITICAL regardless of composite score
+        hard_block = {RULE_VENDOR_SAM_EXCLUDED, RULE_SANCTIONS_LAYERING}
+        if any(s.rule_id in hard_block for s in triggered):
             return "CRITICAL"
         if score >= 70: return "CRITICAL"
         if score >= 50: return "HIGH"
@@ -328,18 +510,29 @@ class FraudDetectionEngine:
 
     def _gao_refs(self, triggered: list[FraudSignal]) -> list[str]:
         mapping = {
-            RULE_DUPLICATE_EXACT:     "GAO Cat1-Ex10 (Duplicate Vendor Payments in DoD)",
-            RULE_DUPLICATE_FUZZY:     "GAO Cat1-Ex10 (Duplicate Vendor Payments in DoD)",
-            RULE_ROUND_DOLLAR:        "GAO Cat1-Ex8 (SNAP Retailer Trafficking — round pattern)",
-            RULE_SPLIT_PURCHASE:      "GAO Cat1-Ex23 (Federal P-Card split-purchase)",
-            RULE_VENDOR_SAM_EXCLUDED: "GAO Cat5-Ex4 (Manual SAM.gov Exclusion Checks)",
-            RULE_EXCEEDS_BUDGET_CAT:  "2 CFR 200.405 (Allowable Costs)",
-            RULE_WEEKEND_TRANSACTION: "GAO Cat1-Ex9 (Travel Card Abuse)",
-            RULE_HIGH_VELOCITY:       "GAO Cat1-Ex3 (Pandemic UI Fraud — velocity)",
-            RULE_AMOUNT_THRESHOLD:    "GAO Cat1-Ex24 (T&M Contract Overbilling)",
-            RULE_GHOST_VENDOR:        "GAO Cat1-Ex11 (Ghost Employees analog)",
-            RULE_RELATED_PARTY:       "GAO Cat5-Ex13 (PEP/Sanctions Screening)",
-            RULE_CROSS_GRANT_DOUBLE:  "GAO Cat1-Ex27 (Federal Grant Double-Dipping)",
+            RULE_DUPLICATE_EXACT:      "GAO Cat1-Ex10 (Duplicate Vendor Payments in DoD)",
+            RULE_DUPLICATE_FUZZY:      "GAO Cat1-Ex10 (Duplicate Vendor Payments in DoD)",
+            RULE_ROUND_DOLLAR:         "GAO Cat1-Ex8 (SNAP Retailer Trafficking — round pattern)",
+            RULE_SPLIT_PURCHASE:       "GAO Cat1-Ex23 (Federal P-Card split-purchase)",
+            RULE_VENDOR_SAM_EXCLUDED:  "GAO Cat5-Ex4 (Manual SAM.gov Exclusion Checks)",
+            RULE_EXCEEDS_BUDGET_CAT:   "2 CFR 200.405 (Allowable Costs)",
+            RULE_WEEKEND_TRANSACTION:  "GAO Cat1-Ex9 (Travel Card Abuse)",
+            RULE_HIGH_VELOCITY:        "GAO Cat1-Ex3 (Pandemic UI Fraud — velocity)",
+            RULE_AMOUNT_THRESHOLD:     "GAO Cat1-Ex24 (T&M Contract Overbilling)",
+            RULE_GHOST_VENDOR:         "GAO Cat1-Ex11 (Ghost Employees analog)",
+            RULE_RELATED_PARTY:        "GAO Cat5-Ex13 (PEP/Sanctions Screening)",
+            RULE_CROSS_GRANT_DOUBLE:   "GAO Cat1-Ex27 (Federal Grant Double-Dipping)",
+            RULE_LABOR_RATE_MISMATCH:  "GAO Cat2 (T&M Labor Category Misclassification)",
+            RULE_ACQUISITION_OVERRUN:  "GAO Cat6-Ex36 (MDAP Cost Growth / EVM Deviation)",
+            RULE_PROCUREMENT_ROTATION: "GAO Cat1-Ex26 (Procurement Collusion — vendor rotation)",
+            RULE_DEVICE_FINGERPRINT:   "GAO Cat4 (Device Fingerprint Ring — PPP/Pell/cross-program)",
+            RULE_SYNTHETIC_ID_ECBSV:   "GAO Cat4 (Synthetic ID — SSA E-CBSv Mismatch)",
+            RULE_OIG_ENTITY_LINK:      "GAO Cat5 (OIG Cross-Entity Link — HHS/SSA)",
+            RULE_AUTH_WINDOW_VIOLATION: "GAO Cat3 (Healthcare Prior-Auth Window Violation)",
+            RULE_CRYPTO_UNDERREPORT:   "GAO Cat5 (Crypto Gain Underreporting — on-chain vs reported)",
+            RULE_SPOOFING_CANCEL_RATE: "GAO Cat1 (Order Spoofing / Layering via Cancel Pattern)",
+            RULE_SANCTIONS_LAYERING:   "GAO Cat5 (OFAC Sanctions Layering — SDN entity match)",
+            RULE_RA_UPCODING:          "GAO Cat3 (Risk-Adjustment Upcoding — insufficient encounters)",
         }
         refs = []
         seen = set()

@@ -33,8 +33,11 @@ class TestSpendVelocityAnomaly:
         assert vel_alerts[0].severity in ("WARNING", "CRITICAL")
 
     def test_normal_velocity_no_alert(self):
-        history = [tx(10000, d) for d in range(7, 84, 7)]
-        current = tx(11000, 0)  # Slightly above normal — OK
+        # Use varied amounts with wide spread (std > 1000) so a 10% spike stays below 2σ.
+        # Start at 8 days ago so no history tx falls in the ≤7-day current-week window.
+        amounts = [7500, 12000, 8500, 11500, 9000, 12500, 9500, 11000, 8000, 10500, 9000]
+        history = [tx(a, d) for a, d in zip(amounts, range(8, 88, 7))]
+        current = tx(11000, 0)  # Within 1σ of mean — below 2.0 WARNING threshold
         alerts = PROC.detect(
             grant_id=GRANT_ID, tenant_id=TENANT_ID,
             current_tx=current, historical_txns=history,

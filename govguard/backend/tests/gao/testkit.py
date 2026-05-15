@@ -88,6 +88,15 @@ def _amount(inp: dict) -> float:
     for k in ("contract_value", "award_amount", "grant_amount", "disbursement_usd"):
         if k in inp:
             return float(inp[k])
+    # Pending benefit payments for a deceased beneficiary (TC-052)
+    if "pending_payments" in inp and isinstance(inp["pending_payments"], list):
+        return sum(float(p.get("amount_usd", 0)) for p in inp["pending_payments"])
+    # Crypto realized gain (TC-043)
+    if "realized_gain_2025_usd" in inp:
+        return float(inp["realized_gain_2025_usd"])
+    # Sanctions wire transfer amount (TC-049)
+    if "wire_amount_usd" in inp:
+        return float(inp["wire_amount_usd"])
     return 50_000.0  # safe default that triggers threshold rules
 
 
@@ -98,8 +107,8 @@ def _vendor_id(inp: dict) -> str:
               "training_vendor", "shipper", "cbg", "nsn"):
         if k in inp:
             return str(inp[k])
-    # PPP cluster — use first EIN
-    if "applications" in inp:
+    # PPP cluster — use first EIN (guard: applications may be an int count, not a list)
+    if "applications" in inp and isinstance(inp["applications"], list) and inp["applications"]:
         return inp["applications"][0].get("ein", "vendor-dataset-001")
     return "vendor-dataset-001"
 
@@ -133,6 +142,15 @@ def _sam_status(inp: dict) -> str:
         return "excluded"
     # Pre-award: BOI overlap with a debarred party → treat applicant as excluded
     if inp.get("boi_overlap_debarred"):
+        return "excluded"
+    # DNP (Do-Not-Pay) deceased match — system-ignored response (TC-034)
+    if str(inp.get("dnp_response", "")).upper() == "DECEASED":
+        return "excluded"
+    # SSA/state vital record pre-dates DMF update window → treat as deceased (TC-052)
+    if inp.get("state_vital_record_date"):
+        return "excluded"
+    # Medicare revocation on record → provider excluded from all programs (TC-057)
+    if inp.get("medicare_revocation_date"):
         return "excluded"
     return "active"
 
@@ -186,6 +204,9 @@ def _related_party(inp: dict) -> bool:
               "conflict_of_interest", "beneficial_owner_flag"):
         if k in inp:
             return bool(inp[k])
+    # Document reuse across multiple disaster/relief submissions (TC-028)
+    if inp.get("duplicate_doc_hash"):
+        return True
     # Heuristic: PPP cluster with CMRA address is related-party
     if inp.get("usps_dpv_address_type") == "CMRA":
         return True
@@ -249,6 +270,10 @@ def _cross_grant_charges(inp: dict, vendor_id: str, category: str) -> list[dict]
     for k in ("all_grant_charges", "cross_grant_charges"):
         if k in inp and isinstance(inp[k], list):
             return inp[k]
+    # Multi-program disaster/relief document reuse (TC-028)
+    if "submissions" in inp and isinstance(inp["submissions"], list) and len(inp["submissions"]) >= 2:
+        return [{"grant_id": s, "cost_category": category, "vendor_id": vendor_id}
+                for s in inp["submissions"]]
     # Medicaid cross-state = two "grant" programmes billed to same vendor
     if "tx_medicaid" in inp and "fl_medicaid" in inp:
         return [
@@ -317,7 +342,8 @@ def _boost_spend_for_velocity(inp: dict, base_spend: float) -> float:
     if inp.get("claims_count", 0) >= 10:
         return max(base_spend, 280_000.0)
     # PPP cluster (6 companies)
-    if "applications" in inp and len(inp.get("applications", [])) >= 4:
+    apps = inp.get("applications", [])
+    if isinstance(apps, list) and len(apps) >= 4:
         return max(base_spend, 260_000.0)
     # SSDI — sustained earnings above SGA
     if "irs_w2_monthly_avg_last7mo_usd" in inp:
@@ -354,6 +380,98 @@ def _build_anomaly_history(inp: dict, vendor_id: str, category: str) -> list[dic
     return history
 
 
+# ── Extra-signal builder (FDE-013 → FDE-023) ─────────────────────────────────
+
+def _build_extra_signals(inp: dict) -> dict:
+    """Map raw synthetic_input_data fields to the extra_signals dict consumed by FDE-013+."""
+    xs: dict = {}
+
+    # FDE-013: Labor category rate mismatch
+    for k in ("resume_median_yoe", "lcat_min_yoe", "nlp_match_score"):
+        if k in inp:
+            xs[k] = float(inp[k])
+
+    # FDE-014: Acquisition overrun / EVM deviation
+    for k in ("cpi", "spi", "predicted_overrun_pct"):
+        if k in inp:
+            xs[k] = float(inp[k])
+    # TC-036 uses _usd_m suffix
+    if "p65_lcc_usd_m" in inp:
+        xs["p65_lcc"] = float(inp["p65_lcc_usd_m"])
+    if "baseline_lcc_usd_m" in inp:
+        xs["baseline_lcc"] = float(inp["baseline_lcc_usd_m"])
+
+    # FDE-015: Procurement rotation
+    for k in ("rotation_chi_square_p", "proposal_cosine_max"):
+        if k in inp:
+            xs[k] = float(inp[k])
+
+    # FDE-016: Device fingerprint ring
+    # TC-020: many returns across few device fingerprints
+    if "returns_count" in inp and "device_fingerprints" in inp:
+        xs["device_match_count"] = float(inp["returns_count"])
+        xs["unique_applicant_count"] = max(float(inp["device_fingerprints"]), 1)
+    # TC-046: many applications across few device fingerprints (applications is int)
+    elif ("applications" in inp and not isinstance(inp["applications"], list)
+          and "device_fingerprints" in inp):
+        xs["device_match_count"] = float(inp["applications"])
+        xs["unique_applicant_count"] = max(float(inp["device_fingerprints"]), 1)
+    if "prior_fraud_link" in inp:
+        xs["prior_fraud_link"] = inp["prior_fraud_link"]
+    if "clickstream_entropy" in inp:
+        xs["clickstream_entropy"] = float(inp["clickstream_entropy"])
+
+    # FDE-017: Synthetic ID — E-CBSv mismatch
+    if "ecbsv_match" in inp:
+        xs["ecbsv_match"] = inp["ecbsv_match"]
+    if "credit_file_age_months" in inp:
+        xs["credit_file_age_months"] = int(inp["credit_file_age_months"])
+
+    # FDE-018: OIG entity link
+    for k in ("oig_case_id", "oig_exclusion_date", "oig_match_score",
+               "oig_entity_id", "hhs_oig_case", "ssa_oig_case"):
+        if k in inp:
+            xs[k] = inp[k]
+
+    # FDE-019: Auth window violation
+    for k in ("dos", "auth_valid_until"):
+        if k in inp:
+            xs[k] = inp[k]
+
+    # FDE-020: Crypto gain underreporting
+    if "realized_gain_2025_usd" in inp:
+        xs["realized_gain_usd"] = float(inp["realized_gain_2025_usd"])
+    elif "realized_gain_usd" in inp:
+        xs["realized_gain_usd"] = float(inp["realized_gain_usd"])
+    if "form_1040_reported_gain_usd" in inp:
+        xs["reported_gain_usd"] = float(inp["form_1040_reported_gain_usd"])
+    elif "reported_gain_usd" in inp:
+        xs["reported_gain_usd"] = float(inp["reported_gain_usd"])
+    if "attribution_confidence" in inp:
+        xs["attribution_confidence"] = float(inp["attribution_confidence"])
+
+    # FDE-021: Order spoofing via cancel rate
+    if "cancel_pct" in inp:
+        xs["cancel_pct"] = float(inp["cancel_pct"])
+    if "orders_placed" in inp:
+        xs["orders_placed"] = int(inp["orders_placed"])
+
+    # FDE-022: Sanctions layering / SDN match
+    if "sdn_party_id" in inp:
+        xs["sdn_party_id"] = inp["sdn_party_id"]
+    if "shell_layers" in inp:
+        xs["shell_layers"] = int(inp["shell_layers"])
+    if "boi_common_owner" in inp:
+        xs["boi_common_owner"] = inp["boi_common_owner"]
+
+    # FDE-023: Risk-adjustment upcoding
+    for k in ("encounter_support_pct", "ra_payment_impact_usd_m"):
+        if k in inp:
+            xs[k] = float(inp[k])
+
+    return xs
+
+
 # ── Core simulation ───────────────────────────────────────────────────────────
 
 def simulate_scenario(inputs: dict, features: list[str]) -> ScenarioResult:
@@ -384,6 +502,7 @@ def simulate_scenario(inputs: dict, features: list[str]) -> ScenarioResult:
     spend = _boost_spend_for_velocity(inputs, spend)
     charges = _cross_grant_charges(inputs, vid, cat)
     rp = _related_party(inputs)
+    xs = _build_extra_signals(inputs)
 
     use_fraud = "M2" in features or "M1" not in features
 
@@ -402,6 +521,7 @@ def simulate_scenario(inputs: dict, features: list[str]) -> ScenarioResult:
             all_grant_charges=charges,
             vendor_risk_tier=tier,
             related_party_flag=rp,
+            extra_signals=xs,
         )
         score = round(r.composite_score / 100.0, 3)
         alert_fired = r.recommended_action != "APPROVE"
@@ -463,10 +583,7 @@ OUT_OF_SCOPE_ALERT_TYPES: frozenset[str] = frozenset({
     "HOSPICE_LOS_LIVE_DISCHARGE_OUTLIER",
     # Requires real-time ML / novel scheme classifier
     "EMERGING_SCHEME_CGX",
-    # Requires device intelligence / e-file fingerprints
-    "REFUND_IDENTITY_THEFT_BURST",
-    # Requires procurement pattern / collusion graph analysis
-    "BID_RIGGING_PATTERN",
+    # "REFUND_IDENTITY_THEFT_BURST" — handled by FDE-016 (returns/device ratio)
     # Requires multi-agency inspection coordination records
     "DUPLICATE_INSPECTION_RISK",
     # Requires COB (coordination-of-benefits) payer data
@@ -479,54 +596,29 @@ OUT_OF_SCOPE_ALERT_TYPES: frozenset[str] = frozenset({
     "STEM_OVERLAP_ATTRIBUTION",
     # Requires HMIS deduplication
     "DUPLICATE_HOMELESS_INTAKE",
-    # Policy analysis — not transaction-level fraud
-    "DOCUMENT_REUSE_OPPORTUNITY",
+    # "DOCUMENT_REUSE_OPPORTUNITY" — handled by FDE-011/012 (duplicate_doc_hash / submissions)
     # "BROADBAND_DUPLICATE_FUNDING" — handled via FDE-009/012 dual-award charges
     # "CROSS_SERVICE_PARTS_DUPLICATION" — handled via FDE-009/012 dual-service charges
     # Requires audit backlog management system
     "STALE_PRIORITY_RECOMMENDATION",
     # Requires IRS legacy reconciliation system access
     "STRANGLER_RECONCILIATION_DRIFT",
-    # Requires SSA Death Master File — no FDE rule covers pre-payment DMF check
-    "DNP_DECEASED_BYPASS",
+    # "DNP_DECEASED_BYPASS" — handled by FDE-005 (dnp_response=DECEASED → excluded)
     # Requires VA telemetry / appointment system data
     "WAIT_TIME_REPORTING_DIVERGENCE",
-    # Requires defense acquisition cost growth model
-    "MISSION_COST_GROWTH_FORECAST",
+    # Requires defense cost model not covered by EVM rules
+    "MISSION_COST_GROWTH_FORECAST_DEEP",   # placeholder — TC-036 handled by FDE-014
+    # Requires Title IV institution risk scoring (HCM2/LOC classification model)
+    "TITLE_IV_INSTITUTION_RISK",
     # Requires Title IV FAFSA exception rate regression testing
     "FAFSA_EXCEPTION_RELEASE_REGRESSION",
     # Requires FISMA / cybersecurity backlog data
     "CYBER_BACKLOG_PRIORITIZATION",
-    # Requires money-flow graph / OFAC analysis
+    # Requires money-flow graph / OFAC analysis beyond FDE-022
     "PASSTHROUGH_FOREIGN_FLOW",
-    # Requires cryptocurrency ledger tracking
-    "CRYPTO_UNDERREPORT",
-    # Requires authentication system logs
-    "AUTH_WINDOW_VIOLATION",
-    # Requires Title IV institution risk monitoring
-    "TITLE_IV_INSTITUTION_RISK",
-    # Requires Pell Grant ring detection ML
-    "PELL_RING_LOWTOUCH_INSTITUTION",
-    # Requires risk-adjustment coding ML model
-    "RA_UPCODING_PATTERN",
     # Requires forced-labor supply-chain tracking (UFLPA)
     "UFLPA_TRANSSHIPMENT_SUSPECTED",
-    # Requires OFAC sanctions graph screening
-    "SANCTIONS_EVASION_DETECTED",
-    # Requires financial-transaction layering detection
-    "SPOOFING_LAYERING",
     # Requires SSA DMF pre-payment block capability
-    "PRE_DMF_DECEDENT_BLOCK",
-    # "ACCOUNT_OWNERSHIP_MISMATCH" — handled via FDE-009/010/011 (ownership_match_score < 0.3)
-    # "CROSS_PROGRAM_OVERLAP" — handled via FDE-011/012 concurrent benefit charges
-    # Requires device fingerprint cross-program matching
-    "CROSS_PROGRAM_DEVICE_REUSE",
-    # Requires SSA E-CBSv synthetic ID verification
-    "SYNTHETIC_ID_ECBSV_MISMATCH",
-    # Requires cross-program exclusion database
-    "CROSS_PROGRAM_REVOKED_PROVIDER",
-    # Requires OIG entity database cross-reference
-    "CROSS_OIG_ENTITY_LINK",
     # "PRE_AWARD_INTEGRITY_FAIL" — handled via FDE-005 (boi_overlap_debarred → excluded)
     # "BURN_RATE_MILESTONE_DIVERGENCE" — handled via FDE-006/009 (q1_burn > quarterly budget)
     # Requires real property utilization data
@@ -542,10 +634,23 @@ OUT_OF_SCOPE_ALERT_TYPES: frozenset[str] = frozenset({
     "CROSS_AGENCY_PERFORMANCE_RISK",
     # Requires multi-program fraud ring detection
     "MULTI_PROGRAM_RING",
-    # Requires labor category classification / T&M analysis
-    "LABOR_CATEGORY_MISCLASSIFICATION",
-    # Requires defense acquisition cost forecasting model
-    "MDAP_OVERRUN_FORECAST",
+    # "LABOR_CATEGORY_MISCLASSIFICATION" — handled by FDE-013
+    # "MDAP_OVERRUN_FORECAST" / "MISSION_COST_GROWTH_FORECAST" — handled by FDE-014
+    # "BID_RIGGING_PATTERN" — handled by FDE-015
+    # "REFUND_IDENTITY_THEFT_BURST" — handled by FDE-016
+    # "DOCUMENT_REUSE_OPPORTUNITY" — handled by FDE-011/012 (duplicate_doc_hash / submissions)
+    # "DNP_DECEASED_BYPASS" — handled by FDE-005 (dnp_response=DECEASED → excluded)
+    # "CRYPTO_UNDERREPORT" — handled by FDE-020
+    # "AUTH_WINDOW_VIOLATION" — handled by FDE-019
+    # "PELL_RING_LOWTOUCH_INSTITUTION" — handled by FDE-016
+    # "RA_UPCODING_PATTERN" — handled by FDE-023
+    # "SANCTIONS_EVASION_DETECTED" — handled by FDE-022
+    # "SPOOFING_LAYERING" — handled by FDE-021
+    # "PRE_DMF_DECEDENT_BLOCK" — handled by FDE-005 (state_vital_record_date → excluded)
+    # "CROSS_PROGRAM_DEVICE_REUSE" — handled by FDE-016
+    # "SYNTHETIC_ID_ECBSV_MISMATCH" — handled by FDE-017
+    # "CROSS_PROGRAM_REVOKED_PROVIDER" — handled by FDE-005 (medicare_revocation_date → excluded)
+    # "CROSS_OIG_ENTITY_LINK" — handled by FDE-018
 })
 
 
