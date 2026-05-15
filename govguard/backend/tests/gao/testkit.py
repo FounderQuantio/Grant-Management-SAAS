@@ -61,9 +61,27 @@ def _amount(inp: dict) -> float:
     for k in ("duplicated_charge_usd", "billing_60d_usd"):
         if k in inp:
             return float(inp[k])
-    # Benefit / welfare amounts
-    for k in ("monthly_benefit_usd", "weekly_benefit_usd", "benefit_monthly_usd",
-              "monthly_paid_per_state_usd", "avg_claim_usd"):
+    # Cross-payer duplicate: TRICARE claim amount
+    if "tricare_claim" in inp and isinstance(inp["tricare_claim"], dict):
+        return float(inp["tricare_claim"].get("amount_usd", 0))
+    # DoD dual-service parts order: USAF order amount
+    if "usaf_order" in inp and isinstance(inp["usaf_order"], dict):
+        return float(inp["usaf_order"].get("amount_usd", 0))
+    # Broadband duplicate funding: larger award
+    if "bead_award_usd" in inp:
+        return float(inp["bead_award_usd"])
+    # Burn-rate anomaly: Q1 actual spend
+    if "q1_burn_usd" in inp:
+        return float(inp["q1_burn_usd"])
+    # Pre-award integrity: requested award size
+    if "requested_award_usd" in inp:
+        return float(inp["requested_award_usd"])
+    # De minimis splitting: per-shipment amount (not aggregate)
+    if "avg_value_usd" in inp:
+        return float(inp["avg_value_usd"])
+    # Benefit / welfare amounts (including cross-program)
+    for k in ("ssdi_monthly_usd", "monthly_benefit_usd", "weekly_benefit_usd",
+              "benefit_monthly_usd", "monthly_paid_per_state_usd", "avg_claim_usd"):
         if k in inp:
             return float(inp[k])
     # Contract / grant amounts
@@ -76,7 +94,8 @@ def _amount(inp: dict) -> float:
 def _vendor_id(inp: dict) -> str:
     for k in ("vendor_id", "provider_npi", "retailer_ean_hash", "contractor_id",
               "provider_id", "entity_id", "preparer_efin", "beneficiary_id_hash",
-              "assessor_id"):
+              "assessor_id", "applicant_uei", "beneficiary_hash",
+              "training_vendor", "shipper", "cbg", "nsn"):
         if k in inp:
             return str(inp[k])
     # PPP cluster — use first EIN
@@ -87,9 +106,13 @@ def _vendor_id(inp: dict) -> str:
 
 def _invoice_ref(inp: dict) -> str:
     for k in ("claim_id", "invoice_ref", "invoice_id", "case_id", "reference_id",
-              "ui_claim_id", "application_id"):
+              "ui_claim_id", "application_id", "loan_id", "award_id",
+              "participant_id_hash", "consignee_addr_hash", "nsn"):
         if k in inp:
             return str(inp[k])
+    # Cross-payer: use TRICARE claim ID as the "current" invoice
+    if "tricare_claim" in inp and isinstance(inp["tricare_claim"], dict):
+        return inp["tricare_claim"].get("id", "CLAIM-001")
     # Medicare MAC claims — use the LAST claim's ID (the one being evaluated)
     if "mac_a_claims" in inp and inp["mac_a_claims"]:
         return inp["mac_a_claims"][-1].get("claim_id", "CLAIM-001")
@@ -108,6 +131,9 @@ def _sam_status(inp: dict) -> str:
     # Prior revocations on a provider enrollment → treat as excluded
     if int(inp.get("owner_prior_revocations", 0)) >= 1:
         return "excluded"
+    # Pre-award: BOI overlap with a debarred party → treat applicant as excluded
+    if inp.get("boi_overlap_debarred"):
+        return "excluded"
     return "active"
 
 
@@ -122,6 +148,9 @@ def _risk_tier(inp: dict) -> str:
             return "low"
     # High BOI match score → shell/sham entity with high risk
     if float(inp.get("boi_match_score", 0)) > 0.8:
+        return "high"
+    # Low account ownership match score → disbursement to mismatched entity
+    if float(inp.get("ownership_match_score", 1.0)) < 0.3:
         return "high"
     # Infer from numeric risk score if present
     rs = float(inp.get("risk_score", inp.get("fraud_probability", 0)))
@@ -144,6 +173,10 @@ def _grant_budget(inp: dict, amount: float) -> dict:
     for k in ("grant_budget", "award_budget", "budget"):
         if k in inp and isinstance(inp[k], dict):
             return inp[k]
+    # Burn-rate anomaly: quarterly budget = annual / 4; amount = q1_burn_usd
+    if "year1_budget_usd" in inp:
+        cat = _cost_category(inp)
+        return {cat: float(inp["year1_budget_usd"]) / 4}
     cat = _cost_category(inp)
     return {cat: amount * 2}
 
@@ -158,6 +191,21 @@ def _related_party(inp: dict) -> bool:
         return True
     # Cross-state dual Medicaid enrollment → same beneficiary gaming two programs
     if "tx_medicaid" in inp and "fl_medicaid" in inp:
+        return True
+    # Cross-payer duplicate (TRICARE + VA CCN same encounter)
+    if "tricare_claim" in inp and "vacc_claim" in inp:
+        return True
+    # Same vendor enrolled across multiple programs simultaneously
+    if "programs" in inp and isinstance(inp["programs"], list) and len(inp["programs"]) >= 2:
+        return True
+    # Concurrent SSDI + UI — same beneficiary double-dipping
+    if "ssdi_monthly_usd" in inp and "ui_weekly_usd" in inp:
+        return True
+    # Account ownership mismatch → disbursement to a different entity
+    if float(inp.get("ownership_match_score", 1.0)) < 0.3:
+        return True
+    # Pre-award: BOI overlap with debarred party → related-party red flag
+    if inp.get("boi_overlap_debarred"):
         return True
     return False
 
@@ -176,6 +224,16 @@ def _prior_invoices(inp: dict, vendor_id: str) -> list[dict]:
              "vendor_id": vendor_id,
              "tx_date": c.get("dos", str(date.today()))}
             for c in claims[:-1]
+        ]
+    # De minimis splitting: synthesise same-day prior shipments for split-purchase check
+    if "shipments_24h" in inp and "avg_value_usd" in inp:
+        n = int(inp["shipments_24h"]) - 1  # current tx counts as one; rest are priors
+        amt = float(inp["avg_value_usd"])
+        today = str(date.today())
+        return [
+            {"id": f"shipment-prior-{i}", "invoice_ref": f"shipment-prior-{i}",
+             "amount": amt, "vendor_id": vendor_id, "tx_date": today}
+            for i in range(n)
         ]
     return []
 
@@ -209,6 +267,36 @@ def _cross_grant_charges(inp: dict, vendor_id: str, category: str) -> list[dict]
             {"grant_id": inp["hhs_award_id"], "cost_category": category, "vendor_id": vendor_id},
             {"grant_id": inp["ed_award_id"], "cost_category": category, "vendor_id": vendor_id},
         ]
+    # Workforce program overlap — same vendor, multiple programs
+    if "programs" in inp and isinstance(inp.get("programs"), list) and len(inp["programs"]) >= 2:
+        return [
+            {"grant_id": p, "cost_category": category, "vendor_id": vendor_id}
+            for p in inp["programs"]
+        ]
+    # Cross-payer duplicate (TRICARE + VA CCN)
+    if "tricare_claim" in inp and "vacc_claim" in inp:
+        return [
+            {"grant_id": "TRICARE", "cost_category": category, "vendor_id": vendor_id},
+            {"grant_id": "VA-CCN", "cost_category": category, "vendor_id": vendor_id},
+        ]
+    # Broadband duplicate funding (BEAD + RDOF)
+    if "bead_award_usd" in inp and "rdof_award_usd" in inp:
+        return [
+            {"grant_id": "BEAD", "cost_category": category, "vendor_id": vendor_id},
+            {"grant_id": "RDOF", "cost_category": category, "vendor_id": vendor_id},
+        ]
+    # DoD dual-service parts order (USAF + Navy same NSN)
+    if "usaf_order" in inp and "navy_order" in inp:
+        return [
+            {"grant_id": "USAF", "cost_category": category, "vendor_id": vendor_id},
+            {"grant_id": "NAVY", "cost_category": category, "vendor_id": vendor_id},
+        ]
+    # Concurrent SSDI + UI benefits (cross-program double-dip)
+    if "ssdi_monthly_usd" in inp and "ui_weekly_usd" in inp:
+        return [
+            {"grant_id": "SSA-SSDI", "cost_category": category, "vendor_id": vendor_id},
+            {"grant_id": "DOL-UI", "cost_category": category, "vendor_id": vendor_id},
+        ]
     return []
 
 
@@ -237,6 +325,12 @@ def _boost_spend_for_velocity(inp: dict, base_spend: float) -> float:
         threshold = float(inp.get("sga_threshold_2026_usd", 1620))
         if monthly > threshold:
             return max(base_spend, 270_000.0)
+    # De minimis splitting — extrapolate 30-day throughput from daily shipment rate
+    if "shipments_24h" in inp and "avg_value_usd" in inp:
+        daily = int(inp["shipments_24h"]) * float(inp["avg_value_usd"])
+        monthly = daily * 30
+        if monthly > 250_000:
+            return max(base_spend, monthly)
     return base_spend
 
 
@@ -375,10 +469,8 @@ OUT_OF_SCOPE_ALERT_TYPES: frozenset[str] = frozenset({
     "BID_RIGGING_PATTERN",
     # Requires multi-agency inspection coordination records
     "DUPLICATE_INSPECTION_RISK",
-    # Requires cross-program participant matching database
-    "WORKFORCE_PROGRAM_OVERLAP",
     # Requires COB (coordination-of-benefits) payer data
-    "CROSS_PAYER_DUPLICATE",
+    # "CROSS_PAYER_DUPLICATE" — handled via FDE-011/012 cross-payer charges
     # Requires incident report deduplication system
     "INCIDENT_REPORT_DEDUP",
     # Requires data-call tracking / agency coordination
@@ -389,10 +481,8 @@ OUT_OF_SCOPE_ALERT_TYPES: frozenset[str] = frozenset({
     "DUPLICATE_HOMELESS_INTAKE",
     # Policy analysis — not transaction-level fraud
     "DOCUMENT_REUSE_OPPORTUNITY",
-    # Requires E-Rate / BEAD program overlap detection
-    "BROADBAND_DUPLICATE_FUNDING",
-    # Requires defense supply-chain parts tracking
-    "CROSS_SERVICE_PARTS_DUPLICATION",
+    # "BROADBAND_DUPLICATE_FUNDING" — handled via FDE-009/012 dual-award charges
+    # "CROSS_SERVICE_PARTS_DUPLICATION" — handled via FDE-009/012 dual-service charges
     # Requires audit backlog management system
     "STALE_PRIORITY_RECOMMENDATION",
     # Requires IRS legacy reconciliation system access
@@ -427,10 +517,8 @@ OUT_OF_SCOPE_ALERT_TYPES: frozenset[str] = frozenset({
     "SPOOFING_LAYERING",
     # Requires SSA DMF pre-payment block capability
     "PRE_DMF_DECEDENT_BLOCK",
-    # Requires bank account ownership verification
-    "ACCOUNT_OWNERSHIP_MISMATCH",
-    # Requires multi-program overlap detection
-    "CROSS_PROGRAM_OVERLAP",
+    # "ACCOUNT_OWNERSHIP_MISMATCH" — handled via FDE-009/010/011 (ownership_match_score < 0.3)
+    # "CROSS_PROGRAM_OVERLAP" — handled via FDE-011/012 concurrent benefit charges
     # Requires device fingerprint cross-program matching
     "CROSS_PROGRAM_DEVICE_REUSE",
     # Requires SSA E-CBSv synthetic ID verification
@@ -439,16 +527,13 @@ OUT_OF_SCOPE_ALERT_TYPES: frozenset[str] = frozenset({
     "CROSS_PROGRAM_REVOKED_PROVIDER",
     # Requires OIG entity database cross-reference
     "CROSS_OIG_ENTITY_LINK",
-    # Requires pre-award integrity vetting pipeline
-    "PRE_AWARD_INTEGRITY_FAIL",
-    # Requires grant milestone tracking
-    "BURN_RATE_MILESTONE_DIVERGENCE",
+    # "PRE_AWARD_INTEGRITY_FAIL" — handled via FDE-005 (boi_overlap_debarred → excluded)
+    # "BURN_RATE_MILESTONE_DIVERGENCE" — handled via FDE-006/009 (q1_burn > quarterly budget)
     # Requires real property utilization data
     "REAL_PROPERTY_UNDERUTILIZATION",
     # Requires SAM.gov entity consolidation analysis
     "SAM_TRUE_DOWN_RECOMMENDED",
-    # Requires de minimis cost-allocation analysis
-    "DE_MINIMIS_SPLITTING",
+    # "DE_MINIMIS_SPLITTING" — handled via FDE-004/008 (shipments_24h + avg_value_usd)
     # Requires foreign financial risk assessment
     "CV_FINANCIAL_FOREIGN_RISK",
     # Requires whistleblower complaint clustering
