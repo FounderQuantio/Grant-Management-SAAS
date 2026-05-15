@@ -4,12 +4,25 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 async function handler(request: NextRequest) {
-  // Use forwarded headers so we get the real public URL, not Vercel's internal one
-  const proto = request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "");
-  const host = request.headers.get("x-forwarded-host") ?? request.nextUrl.host;
+  const xProto = request.headers.get("x-forwarded-proto");
+  const xHost = request.headers.get("x-forwarded-host");
+  const proto = xProto ?? request.nextUrl.protocol.replace(":", "");
+  const host = xHost ?? request.nextUrl.host;
   const appBaseUrl = `${proto}://${host}`;
+  const pathname = request.nextUrl.pathname;
 
-  console.log("[auth0] handler", request.nextUrl.pathname, { appBaseUrl });
+  // Debug mode: ?debug=1 returns diagnostic info instead of running auth
+  if (request.nextUrl.searchParams.get("debug") === "1") {
+    return NextResponse.json({
+      pathname,
+      appBaseUrl,
+      xProto,
+      xHost,
+      nextUrlOrigin: request.nextUrl.origin,
+      envAppBaseUrl: process.env.APP_BASE_URL ?? null,
+      envVercelEnv: process.env.VERCEL_ENV ?? null,
+    });
+  }
 
   try {
     const client = new Auth0Client({
@@ -22,13 +35,16 @@ async function handler(request: NextRequest) {
     });
 
     const res = await client.middleware(request);
-    console.log("[auth0] response status:", res.status, "location:", res.headers.get("location"));
 
     if (res.status >= 400) {
       const body = await res.clone().text().catch(() => "");
-      console.error("[auth0] error response body:", body.slice(0, 500));
-      // Surface the error visibly instead of silently failing
       return NextResponse.json({ error: "Auth error", status: res.status, body: body.slice(0, 500) }, { status: res.status });
+    }
+
+    // Show redirect target instead of following it — helps diagnose where we're going
+    const location = res.headers.get("location");
+    if (location) {
+      console.log("[auth0] redirecting to:", location);
     }
 
     return res;
