@@ -103,6 +103,17 @@ export default async function HomePage() {
         </p>
 
         <div className="flex items-center justify-center gap-4 flex-wrap">
+          {isSignedIn ? (
+            <a
+              href="/dashboard"
+              className="flex items-center gap-2 bg-white text-[#1F3864] hover:bg-blue-50 font-semibold px-7 py-3.5 rounded-xl transition-all shadow-lg hover:shadow-xl group"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Go to Dashboard
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            </a>
+          ) : (
+          <>
           <a
             href="/api/auth/login?screen_hint=signup"
             className="flex items-center gap-2 bg-white text-[#1F3864] hover:bg-blue-50 font-semibold px-7 py-3.5 rounded-xl transition-all shadow-lg hover:shadow-xl group"
@@ -118,6 +129,8 @@ export default async function HomePage() {
             <Lock className="w-4 h-4" />
             Sign In
           </a>
+          </>
+          )}
         </div>
 
         {/* Feature Cards */}
