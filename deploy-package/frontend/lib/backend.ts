@@ -18,25 +18,25 @@ export async function backendProxy(
   path: string,
   options: BackendProxyOptions = {}
 ): Promise<Response> {
-  const session = await auth0.getSession(options.req);
-  if (!session?.user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const user = session.user;
-  const tenantId = user["https://govguard.app/tenant_id"] || "00000000-0000-0000-0000-000000000001";
-  const userId = user["https://govguard.app/user_id"] || user.sub;
-  const role = user["https://govguard.app/role"] || "finance_staff";
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "X-Service-Secret": SERVICE_SECRET,
-    "X-Tenant-ID": tenantId,
-    "X-User-ID": userId,
-    "X-User-Role": role,
-  };
-
   try {
+    const session = await auth0.getSession(options.req);
+    if (!session?.user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = session.user;
+    const tenantId = user["https://govguard.app/tenant_id"] || "00000000-0000-0000-0000-000000000001";
+    const userId = user["https://govguard.app/user_id"] || user.sub;
+    const role = user["https://govguard.app/role"] || "finance_staff";
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-Service-Secret": SERVICE_SECRET,
+      "X-Tenant-ID": tenantId,
+      "X-User-ID": userId,
+      "X-User-Role": role,
+    };
+
     const res = await fetch(`${BACKEND_URL}${path}`, {
       method: options.method || "GET",
       headers,
@@ -44,10 +44,15 @@ export async function backendProxy(
       cache: "no-store",
     });
 
-    const data = await res.json();
-    return Response.json(data, { status: res.status });
+    const text = await res.text();
+    try {
+      const data = JSON.parse(text);
+      return Response.json(data, { status: res.status });
+    } catch {
+      return Response.json({ error: "Invalid backend response", raw: text.slice(0, 200) }, { status: 502 });
+    }
   } catch (error) {
     console.error(`Backend proxy error [${path}]:`, error);
-    return Response.json({ error: "Backend unavailable" }, { status: 502 });
+    return Response.json({ error: "Proxy error", detail: String(error) }, { status: 500 });
   }
 }
