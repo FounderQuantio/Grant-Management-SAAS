@@ -67,7 +67,5 @@ async def get_read_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def set_tenant(session: AsyncSession, tenant_id: str) -> None:
     """Set PostgreSQL session variable for RLS enforcement."""
-    await session.execute(
-        text("SET LOCAL app.current_tenant = :tid"),
-        {"tid": tenant_id},
-    )
+    # SET LOCAL does not support parameterised queries — UUID is safe to inline
+    await session.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}'"))

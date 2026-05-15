@@ -292,36 +292,32 @@ async def get_entity_graph(
 
     v2 NEW: Cross-entity financial intelligence with conflict detection
     """
-    import traceback
-    try:
-        await set_tenant(db, str(user.tenant_id))
+    await set_tenant(db, str(user.tenant_id))
 
-        vendors_result = await db.execute(
-            text("SELECT * FROM vendors WHERE tenant_id=:tid"),
-            {"tid": str(user.tenant_id)},
-        )
-        vendors = [dict(r) for r in vendors_result.mappings()]
+    vendors_result = await db.execute(
+        text("SELECT * FROM vendors WHERE tenant_id=:tid"),
+        {"tid": str(user.tenant_id)},
+    )
+    vendors = [dict(r) for r in vendors_result.mappings()]
 
-        links_result = await db.execute(
-            text("SELECT * FROM entity_links WHERE tenant_id=:tid"),
-            {"tid": str(user.tenant_id)},
-        )
-        entity_links = [dict(r) for r in links_result.mappings()]
+    links_result = await db.execute(
+        text("SELECT * FROM entity_links WHERE tenant_id=:tid"),
+        {"tid": str(user.tenant_id)},
+    )
+    entity_links = [dict(r) for r in links_result.mappings()]
 
-        graph = _entity_svc.build_graph(vendors, entity_links)
+    graph = _entity_svc.build_graph(vendors, entity_links)
 
-        return {
-            "node_count": len(graph.nodes),
-            "edge_count": len(graph.edges),
-            "conflict_count": len(graph.conflict_flags),
-            "risk_summary": graph.risk_summary,
-            "nodes": [{"id": n.entity_id, "name": n.name, "risk_score": n.risk_score, "sam_status": n.sam_status} for n in graph.nodes],
-            "edges": [{"source": e.source_id, "target": e.target_id, "type": e.relationship, "confidence": e.confidence} for e in graph.edges],
-            "conflict_flags": graph.conflict_flags,
-            "version": "v2",
-        }
-    except Exception as e:
-        return {"debug_error": str(e), "trace": traceback.format_exc()}
+    return {
+        "node_count": len(graph.nodes),
+        "edge_count": len(graph.edges),
+        "conflict_count": len(graph.conflict_flags),
+        "risk_summary": graph.risk_summary,
+        "nodes": [{"id": n.entity_id, "name": n.name, "risk_score": n.risk_score, "sam_status": n.sam_status} for n in graph.nodes],
+        "edges": [{"source": e.source_id, "target": e.target_id, "type": e.relationship, "confidence": e.confidence} for e in graph.edges],
+        "conflict_flags": graph.conflict_flags,
+        "version": "v2",
+    }
 
 
 # ────────────────────────────────────────────────────────────────────────────
