@@ -110,6 +110,10 @@ def create_app() -> FastAPI:
     app.include_router(erp_router,          prefix=f"{PREFIX}/integrations", tags=["Integrations"])
     app.include_router(webhooks_router,     prefix=f"{PREFIX}/webhooks",     tags=["Webhooks"])
 
+    # GovGuard v2 — Add-on modules (do NOT modify anything above this line)
+    from api.routes.v2.routes import router as v2_router
+    app.include_router(v2_router, prefix="/api/v2", tags=["v2"])
+
     return app
 
 
