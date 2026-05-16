@@ -232,7 +232,7 @@ async def run_compliance_monitor(
         grant_id=str(grant_id),
         tenant_id=str(user.tenant_id),
         grant={
-            "budget_json": grant.budget_json,
+            "budget_json": grant.budget_json or {},
             "period_end": str(grant.period_end) if grant.period_end else None,
             "status": grant.status,
         },
