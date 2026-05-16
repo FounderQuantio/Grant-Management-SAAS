@@ -48,6 +48,21 @@ class RiskScoreResponse(BaseModel):
     is_high_risk: bool
 
 
+class FraudAssessmentResponse(BaseModel):
+    transaction_id: UUID
+    composite_score: Decimal
+    risk_tier: str
+    triggered_rules: list[str]
+    recommended_action: str
+    gao_references: list[str]
+    explanation: str
+    signal_detail: list[dict]
+    engine_version: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class BulkUploadResponse(BaseModel):
     job_id: UUID
     queued_count: int

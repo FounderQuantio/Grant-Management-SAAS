@@ -10,7 +10,7 @@ from core.auth import get_current_user, require_role, UserContext
 from core.db import get_db, set_tenant
 from modules.transactions.schemas import (
     TransactionCreate, TransactionFlagUpdate,
-    TransactionResponse, RiskScoreResponse,
+    TransactionResponse, RiskScoreResponse, FraudAssessmentResponse,
     BulkUploadResponse, TransactionListResponse,
 )
 from modules.transactions.service import TransactionService
@@ -84,6 +84,16 @@ async def list_transactions(
         page=page,
         limit=limit,
     )
+
+
+@router.get("/{tx_id}/fraud", response_model=FraudAssessmentResponse)
+async def get_fraud_assessment(
+    tx_id: UUID,
+    user: UserContext = Depends(get_current_user),
+    svc: TransactionService = Depends(_get_service),
+):
+    """Return the fraud engine assessment for a transaction."""
+    return await svc.get_fraud_assessment(tx_id, user.tenant_id)
 
 
 @router.get("/{tx_id}/risk", response_model=RiskScoreResponse)

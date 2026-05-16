@@ -286,3 +286,50 @@ class ERPSyncJob(Base):
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = now_default()
+
+
+# ── Fraud Assessment Logs (v2) ─────────────────────────────────────────────
+
+class FraudAssessmentLog(Base):
+    __tablename__ = "fraud_assessments"
+    __table_args__ = (
+        Index("ix_fraud_assess_tx", "transaction_id"),
+        Index("ix_fraud_assess_tenant_tier", "tenant_id", "risk_tier"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    transaction_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    composite_score: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    risk_tier: Mapped[str] = mapped_column(String(20), nullable=False)
+    triggered_rules: Mapped[list] = mapped_column(ARRAY(String), nullable=False, server_default="{}")
+    recommended_action: Mapped[str] = mapped_column(String(20), nullable=False)
+    gao_references: Mapped[list] = mapped_column(ARRAY(String), nullable=False, server_default="{}")
+    explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    signal_detail: Mapped[dict] = mapped_column(JSON, nullable=False, server_default="[]")
+    engine_version: Mapped[str] = mapped_column(String(20), nullable=False, default="v2.0.0")
+    created_at: Mapped[datetime] = now_default()
+
+
+# ── Anomaly Alerts (v2) ────────────────────────────────────────────────────
+
+class AnomalyAlert(Base):
+    __tablename__ = "anomaly_alerts"
+    __table_args__ = (
+        Index("ix_anomaly_tenant_grant", "tenant_id", "grant_id"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    grant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("grants.id"), nullable=False)
+    anomaly_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    score: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
+    threshold: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
+    observed_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2))
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    gao_reference: Mapped[Optional[str]] = mapped_column(Text)
+    auto_action: Mapped[Optional[str]] = mapped_column(String(30))
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    resolved_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = now_default()
