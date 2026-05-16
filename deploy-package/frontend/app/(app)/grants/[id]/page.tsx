@@ -1,6 +1,6 @@
 "use client";
 import useSWR from "swr";
-import { use, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, FileText, AlertTriangle, CheckCircle2, Clock,
@@ -162,8 +162,8 @@ function TxFraudButton({ txId }: { txId: string }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export default function GrantDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function GrantDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { data, isLoading } = useSWR(`/api/grants/${id}`, fetcher);
 
   const [fraudResult, setFraudResult]       = useState<object | null>(null);
