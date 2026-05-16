@@ -160,11 +160,60 @@ function TxFraudButton({ txId }: { txId: string }) {
   );
 }
 
+// ─── Confirm/dismiss fraud label button ──────────────────────────────────────
+
+function LabelButton({ txId, onLabeled }: { txId: string; onLabeled: () => void }) {
+  const [saving, setSaving] = useState<"fraud" | "clean" | null>(null);
+  const [done, setDone] = useState<boolean | null>(null);
+
+  const submit = async (confirmed_fraud: boolean) => {
+    setSaving(confirmed_fraud ? "fraud" : "clean");
+    try {
+      await fetch(`/api/v2/fraud/label/${txId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmed_fraud }),
+      });
+      setDone(confirmed_fraud);
+      onLabeled();
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  if (done !== null) {
+    return (
+      <span className={`text-xs font-medium ${done ? "text-red-600" : "text-green-600"}`}>
+        {done ? "Confirmed fraud" : "Confirmed clean"}
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex gap-1">
+      <button
+        onClick={() => submit(true)}
+        disabled={!!saving}
+        className="text-xs px-2 py-0.5 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-40"
+      >
+        {saving === "fraud" ? "…" : "Fraud"}
+      </button>
+      <button
+        onClick={() => submit(false)}
+        disabled={!!saving}
+        className="text-xs px-2 py-0.5 rounded border border-green-300 text-green-600 hover:bg-green-50 disabled:opacity-40"
+      >
+        {saving === "clean" ? "…" : "Clean"}
+      </button>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function GrantDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const { data, isLoading } = useSWR(`/api/grants/${id}`, fetcher);
+  const { data, isLoading, mutate } = useSWR(`/api/grants/${id}`, fetcher);
 
   const [fraudResult, setFraudResult]       = useState<object | null>(null);
   const [fraudLoading, setFraudLoading]     = useState(false);
@@ -303,6 +352,7 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
                     <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">Amount</th>
                     <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase">Risk</th>
                     <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase">Label</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -320,6 +370,11 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Badge status={String(tx.flag_status)} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {String(tx.flag_status) === "flagged" && (
+                          <LabelButton txId={String(tx.id)} onLabeled={() => mutate()} />
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <TxFraudButton txId={String(tx.id)} />

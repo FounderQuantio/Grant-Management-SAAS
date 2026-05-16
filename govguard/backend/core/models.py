@@ -308,6 +308,8 @@ class FraudAssessmentLog(Base):
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
     signal_detail: Mapped[dict] = mapped_column(JSON, nullable=False, server_default="[]")
     engine_version: Mapped[str] = mapped_column(String(20), nullable=False, default="v2.0.0")
+    confirmed_label: Mapped[Optional[bool]] = mapped_column(Boolean)
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = now_default()
 
 

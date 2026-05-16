@@ -6,10 +6,11 @@ NEW FILE: api/routes/v2/routes.py
 PATCH REQUIRED IN: backend/main.py (add 3 lines — see PATCH section)
 All new endpoints are prefixed /api/v2/ to avoid breaking v1 consumers.
 """
+import json as _json
 from typing import Optional
 from uuid import UUID
 from datetime import date
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 
@@ -118,13 +119,89 @@ async def assess_fraud(
                     text("UPDATE transactions SET flag_status=:fs, flag_reason=:fr WHERE id=:id AND tenant_id=:tid"),
                     {"fs": new_status, "fr": reason, "id": str(tx_id), "tid": str(user.tenant_id)},
                 )
-        await db.commit()
+
+    # Log to ML training pipeline — best-effort, never blocks the response
+    try:
+        await db.execute(
+            text("""
+                INSERT INTO fraud_assessments
+                  (tenant_id, transaction_id, composite_score, risk_tier,
+                   triggered_rules, recommended_action, gao_references,
+                   explanation, signal_detail, engine_version)
+                VALUES
+                  (:tid, :tx_id, :score, :tier,
+                   :triggered, :action, :gao_refs,
+                   :explanation, :signal_detail::jsonb, 'v2.0.0')
+            """),
+            {
+                "tid": str(user.tenant_id),
+                "tx_id": str(tx_id),
+                "score": assessment.composite_score,
+                "tier": assessment.risk_tier,
+                "triggered": assessment.triggered_rules,
+                "action": assessment.recommended_action,
+                "gao_refs": assessment.gao_references,
+                "explanation": assessment.explanation,
+                "signal_detail": _json.dumps([
+                    {"rule": s.rule_id, "triggered": s.triggered, "weight": s.weight}
+                    for s in assessment.signals
+                ]),
+            },
+        )
+    except Exception as _e:
+        import structlog as _slog
+        _slog.get_logger().warning("fraud_assess.log_error", error=str(_e))
+
+    await db.commit()
 
     return {
         "assessment": assessment.to_dict(),
         "auto_actions_triggered": [a.action_type for a in actions],
         "version": "v2",
     }
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# 1b. FRAUD LABEL (confirmed outcome for ML training)
+# ────────────────────────────────────────────────────────────────────────────
+
+@router.patch("/fraud/label/{tx_id}")
+async def label_fraud(
+    tx_id: UUID,
+    body: dict = Body(...),
+    user: UserContext = Depends(get_current_user_or_service),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Record a confirmed fraud/not-fraud label on a transaction's latest assessment.
+    This is the ground-truth signal used to train the Phase 2 supervised classifier.
+    """
+    confirmed_fraud = body.get("confirmed_fraud")
+    if confirmed_fraud is None:
+        return {"error": "confirmed_fraud (bool) required in body"}, 400
+
+    result = await db.execute(
+        text("""
+            UPDATE fraud_assessments
+            SET confirmed_label = :label,
+                confirmed_at    = NOW()
+            WHERE transaction_id = :tx_id
+              AND tenant_id      = :tid
+              AND id = (
+                SELECT id FROM fraud_assessments
+                WHERE transaction_id = :tx_id AND tenant_id = :tid
+                ORDER BY created_at DESC LIMIT 1
+              )
+            RETURNING id
+        """),
+        {"label": bool(confirmed_fraud), "tx_id": str(tx_id), "tid": str(user.tenant_id)},
+    )
+    row = result.fetchone()
+    if not row:
+        return {"error": "No assessment found for this transaction"}, 404
+
+    await db.commit()
+    return {"labeled": True, "transaction_id": str(tx_id), "confirmed_fraud": confirmed_fraud}
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -496,6 +573,36 @@ async def bulk_fraud_scan(
                  "fr": assessment.explanation if new_status != "clear" else None,
                  "id": tx_id, "tenant": str(user.tenant_id)},
             )
+            # Log to ML training pipeline
+            try:
+                await db.execute(
+                    text("""
+                        INSERT INTO fraud_assessments
+                          (tenant_id, transaction_id, composite_score, risk_tier,
+                           triggered_rules, recommended_action, gao_references,
+                           explanation, signal_detail, engine_version)
+                        VALUES
+                          (:tid, :tx_id, :score, :tier,
+                           :triggered, :action, :gao_refs,
+                           :explanation, :signal_detail::jsonb, 'v2.0.0')
+                    """),
+                    {
+                        "tid": str(user.tenant_id),
+                        "tx_id": tx_id,
+                        "score": assessment.composite_score,
+                        "tier": assessment.risk_tier,
+                        "triggered": assessment.triggered_rules,
+                        "action": assessment.recommended_action,
+                        "gao_refs": assessment.gao_references,
+                        "explanation": assessment.explanation,
+                        "signal_detail": _json.dumps([
+                            {"rule": s.rule_id, "triggered": s.triggered, "weight": s.weight}
+                            for s in assessment.signals
+                        ]),
+                    },
+                )
+            except Exception:
+                pass
             assessed += 1
         except Exception as e:
             import structlog as _slog
