@@ -11,6 +11,7 @@ from typing import Optional
 from uuid import UUID
 from datetime import date
 from fastapi import APIRouter, Depends, Query, Body
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 
@@ -154,10 +155,14 @@ async def assess_fraud(
 # 1b. FRAUD LABEL (confirmed outcome for ML training)
 # ────────────────────────────────────────────────────────────────────────────
 
+class LabelRequest(BaseModel):
+    confirmed_fraud: bool
+
+
 @router.patch("/fraud/label/{tx_id}")
 async def label_fraud(
     tx_id: UUID,
-    body: dict = Body(...),
+    payload: LabelRequest,
     user: UserContext = Depends(get_current_user_or_service),
     db: AsyncSession = Depends(get_db),
 ):
@@ -165,9 +170,7 @@ async def label_fraud(
     Record a confirmed fraud/not-fraud label on a transaction's latest assessment.
     This is the ground-truth signal used to train the Phase 2 supervised classifier.
     """
-    confirmed_fraud = body.get("confirmed_fraud")
-    if confirmed_fraud is None:
-        return {"error": "confirmed_fraud (bool) required in body"}, 400
+    confirmed_fraud = payload.confirmed_fraud
 
     result = await db.execute(
         text("""
