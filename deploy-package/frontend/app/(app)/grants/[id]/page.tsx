@@ -343,8 +343,10 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
                   <div className="flex justify-between"><span className="text-gray-500">Confidence</span><span className="font-medium">{(Number(r.confidence ?? 0) * 100).toFixed(0)}%</span></div>
                   {Array.isArray(r.risk_drivers) && r.risk_drivers.length > 0 && (
                     <div><p className="text-gray-500 mb-1">Top Drivers</p>
-                      {(r.risk_drivers as string[]).slice(0, 3).map((d: string) => (
-                        <p key={d} className="text-xs bg-amber-50 text-amber-800 p-1.5 rounded mb-1">{d}</p>
+                      {(r.risk_drivers as { factor: string; contribution: number }[]).slice(0, 3).map((drv) => (
+                        <p key={drv.factor} className="text-xs bg-amber-50 text-amber-800 p-1.5 rounded mb-1">
+                          {drv.factor.replace(/_/g, " ")} <span className="font-semibold">(+{drv.contribution})</span>
+                        </p>
                       ))}
                     </div>
                   )}
