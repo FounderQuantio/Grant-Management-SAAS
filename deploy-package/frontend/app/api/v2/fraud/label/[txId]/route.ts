@@ -17,23 +17,28 @@ export async function PATCH(req: NextRequest, { params }: { params: { txId: stri
   if (confirmed_fraud === undefined)
     return Response.json({ error: "confirmed_fraud required" }, { status: 400 });
 
-  const result = await sql`
-    UPDATE fraud_assessments
-    SET confirmed_label = ${confirmed_fraud},
-        confirmed_at    = NOW()
-    WHERE transaction_id = ${txId}::UUID
-      AND tenant_id      = ${tenantId}::UUID
-      AND id = (
-        SELECT id FROM fraud_assessments
-        WHERE transaction_id = ${txId}::UUID
-          AND tenant_id      = ${tenantId}::UUID
-        ORDER BY created_at DESC
-        LIMIT 1
-      )
-    RETURNING id
-  `;
+  try {
+    const result = await sql`
+      UPDATE fraud_assessments
+      SET confirmed_label = ${confirmed_fraud},
+          confirmed_at    = NOW()
+      WHERE transaction_id = ${txId}::UUID
+        AND tenant_id      = ${tenantId}::UUID
+        AND id = (
+          SELECT id FROM fraud_assessments
+          WHERE transaction_id = ${txId}::UUID
+            AND tenant_id      = ${tenantId}::UUID
+          ORDER BY created_at DESC
+          LIMIT 1
+        )
+      RETURNING id
+    `;
 
-  if (!result[0]) return Response.json({ error: "No assessment found", tx_id: txId }, { status: 404 });
+    if (!result[0]) return Response.json({ error: "No assessment found", tx_id: txId }, { status: 404 });
 
-  return Response.json({ labeled: true, transaction_id: txId, confirmed_fraud });
+    return Response.json({ labeled: true, transaction_id: txId, confirmed_fraud });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return Response.json({ error: "Database error", detail: msg }, { status: 500 });
+  }
 }
