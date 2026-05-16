@@ -584,15 +584,27 @@ async def bulk_fraud_scan(
             _slog.get_logger().warning("bulk_scan.tx_error", tx_id=tx_id, error=str(e))
             skipped.append({"tx_id": tx_id, "error": str(e)})
 
-    # Add all ML logs after raw SQL loop to prevent autoflush mid-loop
-    for log_obj in ml_logs:
-        db.add(log_obj)
+    # Commit transaction status updates first (critical path)
     await db.commit()
+
+    # Best-effort ML log inserts in a separate transaction
+    ml_log_error = None
+    try:
+        for log_obj in ml_logs:
+            db.add(log_obj)
+        await db.commit()
+    except Exception as e:
+        ml_log_error = str(e)
+        try:
+            await db.rollback()
+        except Exception:
+            pass
 
     return {
         "grant_id": str(grant_id),
         "transactions_queued": assessed,
         "skipped": skipped,
+        "ml_log_error": ml_log_error,
         "message": f"Fraud assessment completed for {assessed} pending transactions",
         "version": "v2",
     }
