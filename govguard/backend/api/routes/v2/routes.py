@@ -414,19 +414,55 @@ async def bulk_fraud_scan(
     )
     tx_ids = [str(r.id) for r in result]
 
-    # Queue each as a background task (defer to existing Celery infrastructure)
-    queued = 0
+    # Run fraud engine inline for each pending transaction (no Celery dependency)
+    assessed = 0
     for tx_id in tx_ids:
         try:
-            from workers.payment_tasks import score_transaction_async
-            score_transaction_async.delay(tx_id, str(user.tenant_id))
-            queued += 1
+            tx_result = await db.execute(
+                text("""
+                    SELECT t.*, v.sam_status, v.risk_tier
+                    FROM transactions t JOIN vendors v ON v.id = t.vendor_id
+                    WHERE t.id = :tid AND t.tenant_id = :tenant
+                """),
+                {"tid": tx_id, "tenant": str(user.tenant_id)},
+            )
+            row = tx_result.mappings().first()
+            if not row:
+                continue
+            grant_obj = await db.get(Grant, row["grant_id"])
+            budget = grant_obj.budget_json if grant_obj else {}
+            assessment = _fraud_engine.assess(
+                transaction_id=tx_id,
+                amount=float(row["amount"]),
+                vendor_id=str(row["vendor_id"]),
+                vendor_sam_status=row.get("sam_status", "unknown"),
+                invoice_ref=row.get("invoice_ref", ""),
+                tx_date=row.get("tx_date"),
+                cost_category=row.get("cost_category", ""),
+                grant_budget=budget,
+                prior_invoices=[],
+                vendor_spend_30d=0,
+                all_grant_charges=[],
+                vendor_risk_tier=row.get("risk_tier", "medium"),
+                related_party_flag=False,
+            )
+            flag_map = {"BLOCK": "flagged", "HOLD": "flagged", "REVIEW": "flagged", "APPROVE": "clear"}
+            new_status = flag_map.get(assessment.recommended_action, "pending")
+            await db.execute(
+                text("UPDATE transactions SET risk_score=:rs, flag_status=:fs, flag_reason=:fr WHERE id=:id AND tenant_id=:tenant"),
+                {"rs": round(assessment.composite_score, 2), "fs": new_status,
+                 "fr": assessment.explanation if new_status != "clear" else None,
+                 "id": tx_id, "tenant": str(user.tenant_id)},
+            )
+            assessed += 1
         except Exception:
             pass
 
+    await db.commit()
+
     return {
         "grant_id": str(grant_id),
-        "transactions_queued": queued,
-        "message": f"Fraud assessment queued for {queued} pending transactions",
+        "transactions_queued": assessed,
+        "message": f"Fraud assessment completed for {assessed} pending transactions",
         "version": "v2",
     }

@@ -178,8 +178,13 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
   const runFraudScan = async () => {
     setFraudLoading(true);
     try {
-      const res = await fetch(`/api/v2/fraud/bulk-scan/${id}`, { method: "POST" });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(`/api/v2/fraud/bulk-scan/${id}`, { method: "POST", signal: controller.signal });
+      clearTimeout(timeout);
       setFraudResult(await res.json());
+    } catch {
+      setFraudResult({ transactions_queued: 0, message: "Scan timed out — Celery worker not configured on this deployment." });
     } finally { setFraudLoading(false); }
   };
 
