@@ -524,6 +524,7 @@ async def bulk_fraud_scan(
     # Run fraud engine inline for each pending transaction (no Celery dependency)
     assessed = 0
     skipped = []
+    ml_logs = []  # collected after all raw SQL to avoid autoflush interference
     for tx_id in tx_ids:
         try:
             tx_result = await db.execute(
@@ -562,31 +563,30 @@ async def bulk_fraud_scan(
                  "fr": assessment.explanation if new_status != "clear" else None,
                  "id": tx_id, "tenant": str(user.tenant_id)},
             )
-            # Log to ML training pipeline
-            try:
-                db.add(FraudAssessmentLog(
-                    tenant_id=user.tenant_id,
-                    transaction_id=UUID(tx_id),
-                    composite_score=assessment.composite_score,
-                    risk_tier=assessment.risk_tier,
-                    triggered_rules=assessment.triggered_rules,
-                    recommended_action=assessment.recommended_action,
-                    gao_references=assessment.gao_references,
-                    explanation=assessment.explanation,
-                    signal_detail=[
-                        {"rule": s.rule_id, "triggered": s.triggered, "weight": s.weight}
-                        for s in assessment.signals
-                    ],
-                    engine_version="v2.0.0",
-                ))
-            except Exception:
-                pass
+            ml_logs.append(FraudAssessmentLog(
+                tenant_id=user.tenant_id,
+                transaction_id=UUID(tx_id),
+                composite_score=assessment.composite_score,
+                risk_tier=assessment.risk_tier,
+                triggered_rules=assessment.triggered_rules,
+                recommended_action=assessment.recommended_action,
+                gao_references=assessment.gao_references,
+                explanation=assessment.explanation,
+                signal_detail=[
+                    {"rule": s.rule_id, "triggered": s.triggered, "weight": s.weight}
+                    for s in assessment.signals
+                ],
+                engine_version="v2.0.0",
+            ))
             assessed += 1
         except Exception as e:
             import structlog as _slog
             _slog.get_logger().warning("bulk_scan.tx_error", tx_id=tx_id, error=str(e))
             skipped.append({"tx_id": tx_id, "error": str(e)})
 
+    # Add all ML logs after raw SQL loop to prevent autoflush mid-loop
+    for log_obj in ml_logs:
+        db.add(log_obj)
     await db.commit()
 
     return {
