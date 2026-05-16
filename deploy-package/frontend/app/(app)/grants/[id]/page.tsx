@@ -395,8 +395,9 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
                   <div className="flex justify-between"><span className="text-gray-500">Auto-CAPs</span><span className="font-medium">{String(r.auto_caps_created ?? 0)}</span></div>
                   {violations.slice(0, 4).map((v, i) => (
                     <div key={i} className="bg-red-50 border border-red-100 rounded-lg p-2 text-xs">
-                      <p className="font-medium text-red-800">{String(v.violation_type ?? v.type ?? "")}</p>
-                      <p className="text-red-700 mt-0.5">{String(v.description ?? "")}</p>
+                      <p className="font-medium text-red-800">{String(v.title ?? v.rule_id ?? "")}</p>
+                      <p className="text-gray-500 mt-0.5">{String(v.cfr_citation ?? "")} {String(v.severity ?? "")}</p>
+                      <p className="text-red-700 mt-0.5">{String(v.recommended_remediation ?? "")}</p>
                     </div>
                   ))}
                 </div>
