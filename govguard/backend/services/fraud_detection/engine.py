@@ -55,6 +55,31 @@ RULE_CRYPTO_UNDERREPORT   = "FDE-020"   # Cat 5 crypto gain underreporting
 RULE_SPOOFING_CANCEL_RATE = "FDE-021"   # Cat 1 spoofing via order-cancel pattern
 RULE_SANCTIONS_LAYERING   = "FDE-022"   # Cat 5 OFAC sanctions layering / SDN match
 RULE_RA_UPCODING          = "FDE-023"   # Cat 3 risk-adjustment upcoding
+# ── Tier 3 rules ─────────────────────────────────────────────────────────────
+RULE_EITC_CROSS_CLAIM     = "FDE-024"   # Cat 2 EITC same-child dual-filer
+RULE_DISASTER_AID_DUP     = "FDE-025"   # Cat 3 Stafford disaster-aid duplication
+RULE_DME_GEO_OUTLIER      = "FDE-026"   # Cat 2 DME geographic mismatch
+RULE_HOSPICE_OUTLIER      = "FDE-027"   # Cat 2 hospice LOS/live-discharge outlier
+RULE_VOLUME_SPIKE_SCHEME  = "FDE-028"   # Cat 2 emerging-scheme volume spike (CGx)
+RULE_DUPLICATE_INSPECTION = "FDE-029"   # Cat 5 duplicate FSIS/FDA inspection
+RULE_INCIDENT_DEDUP       = "FDE-030"   # Cat 5 TSA/CISA incident report dedup
+RULE_DATA_CALL_OVERLAP    = "FDE-031"   # Cat 5 overlapping regulatory data calls
+RULE_GRANT_ATTR_OVERLAP   = "FDE-032"   # Cat 3 STEM grant attribution overlap
+RULE_DUPLICATE_INTAKE     = "FDE-033"   # Cat 4 HMIS/VA duplicate homeless intake
+RULE_STALE_RECOMMENDATION = "FDE-034"   # Cat 6 stale GAO priority recommendation
+RULE_RECON_DRIFT          = "FDE-035"   # Cat 1 IRS legacy reconciliation drift
+RULE_WAIT_TIME_DIVERGENCE = "FDE-036"   # Cat 6 VA wait-time reporting divergence
+RULE_EXCEPTION_RATE_SPIKE = "FDE-037"   # Cat 3 FAFSA exception-rate regression
+RULE_CYBER_BACKLOG        = "FDE-038"   # Cat 6 FISMA high-impact cyber backlog
+RULE_FOREIGN_PASSTHROUGH  = "FDE-039"   # Cat 5 passthrough foreign money flow
+RULE_TITLE_IV_RISK        = "FDE-040"   # Cat 3 Title IV institution risk (CDR/90-10)
+RULE_IMPORT_TRANSSHIPMENT = "FDE-041"   # Cat 5 UFLPA import transshipment
+RULE_PROPERTY_UNDERUTIL   = "FDE-042"   # Cat 6 federal real-property underutilization
+RULE_SAM_TRUE_DOWN        = "FDE-043"   # Cat 6 SAM.gov seat true-down opportunity
+RULE_CLEARANCE_FIN_RISK   = "FDE-044"   # Cat 4 security-clearance financial risk
+RULE_WHISTLEBLOWER_CLUSTER = "FDE-045"  # Cat 5 whistleblower tip cluster
+RULE_CONTRACTOR_PERF_RISK = "FDE-046"   # Cat 6 cross-agency CPARS performance risk
+RULE_MULTI_PROGRAM_RING   = "FDE-047"   # Cat 4 multi-program fraud ring
 
 
 @dataclass
@@ -126,6 +151,31 @@ class FraudDetectionEngine:
         RULE_SPOOFING_CANCEL_RATE: 2.5,
         RULE_SANCTIONS_LAYERING:   3.0,   # Hard block signal
         RULE_RA_UPCODING:          2.5,
+        # Tier 3
+        RULE_EITC_CROSS_CLAIM:     2.5,
+        RULE_DISASTER_AID_DUP:     2.5,
+        RULE_DME_GEO_OUTLIER:      2.5,
+        RULE_HOSPICE_OUTLIER:      2.5,
+        RULE_VOLUME_SPIKE_SCHEME:  2.5,
+        RULE_DUPLICATE_INSPECTION: 2.5,
+        RULE_INCIDENT_DEDUP:       2.5,
+        RULE_DATA_CALL_OVERLAP:    2.5,
+        RULE_GRANT_ATTR_OVERLAP:   2.5,
+        RULE_DUPLICATE_INTAKE:     2.5,
+        RULE_STALE_RECOMMENDATION: 2.5,
+        RULE_RECON_DRIFT:          2.5,
+        RULE_WAIT_TIME_DIVERGENCE: 2.5,
+        RULE_EXCEPTION_RATE_SPIKE: 2.5,
+        RULE_CYBER_BACKLOG:        2.5,
+        RULE_FOREIGN_PASSTHROUGH:  2.5,
+        RULE_TITLE_IV_RISK:        2.5,
+        RULE_IMPORT_TRANSSHIPMENT: 2.5,
+        RULE_PROPERTY_UNDERUTIL:   2.5,
+        RULE_SAM_TRUE_DOWN:        2.5,
+        RULE_CLEARANCE_FIN_RISK:   2.5,
+        RULE_WHISTLEBLOWER_CLUSTER: 2.5,
+        RULE_CONTRACTOR_PERF_RISK: 2.5,
+        RULE_MULTI_PROGRAM_RING:   2.5,
     }
 
     def assess(
@@ -213,6 +263,31 @@ class FraudDetectionEngine:
             self._check_spoofing_cancel_rate(ctx),
             self._check_sanctions_layering(ctx),
             self._check_ra_upcoding(ctx),
+            # Tier 3
+            self._check_eitc_cross_claim(ctx),
+            self._check_disaster_aid_dup(ctx),
+            self._check_dme_geo_outlier(ctx),
+            self._check_hospice_outlier(ctx),
+            self._check_volume_spike_scheme(ctx),
+            self._check_duplicate_inspection(ctx),
+            self._check_incident_dedup(ctx),
+            self._check_data_call_overlap(ctx),
+            self._check_grant_attr_overlap(ctx),
+            self._check_duplicate_intake(ctx),
+            self._check_stale_recommendation(ctx),
+            self._check_recon_drift(ctx),
+            self._check_wait_time_divergence(ctx),
+            self._check_exception_rate_spike(ctx),
+            self._check_cyber_backlog(ctx),
+            self._check_foreign_passthrough(ctx),
+            self._check_title_iv_risk(ctx),
+            self._check_import_transshipment(ctx),
+            self._check_property_underutil(ctx),
+            self._check_sam_true_down(ctx),
+            self._check_clearance_fin_risk(ctx),
+            self._check_whistleblower_cluster(ctx),
+            self._check_contractor_perf_risk(ctx),
+            self._check_multi_program_ring(ctx),
         ]
 
     def _check_duplicate_exact(self, ctx: dict) -> FraudSignal:
@@ -490,6 +565,251 @@ class FraudDetectionEngine:
             sig.evidence = {"encounter_support_pct": support_pct, "ra_payment_impact_usd_m": impact}
         return sig
 
+    def _check_eitc_cross_claim(self, ctx: dict) -> FraudSignal:
+        """FDE-024: Same child claimed for EITC by two filers with no SSA dependency match."""
+        sig = FraudSignal(RULE_EITC_CROSS_CLAIM, "EITC same-child dual-filer cross-claim", self.RULE_WEIGHTS[RULE_EITC_CROSS_CLAIM])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("filer_a") and xs.get("filer_b") and not xs.get("ssa_dependency_match", True):
+            sig.triggered = True
+            sig.evidence = {"filer_a": xs["filer_a"], "filer_b": xs["filer_b"], "ssa_dependency_match": False}
+        return sig
+
+    def _check_disaster_aid_dup(self, ctx: dict) -> FraudSignal:
+        """FDE-025: Combined disaster aid exceeds documented loss by >10%."""
+        sig = FraudSignal(RULE_DISASTER_AID_DUP, "Stafford disaster-aid duplication — total aid > documented loss", self.RULE_WEIGHTS[RULE_DISASTER_AID_DUP])
+        xs = ctx.get("extra_signals", {})
+        fema = xs.get("fema_ihp_usd", 0.0)
+        sba = xs.get("sba_loan_usd", 0.0)
+        nfip = xs.get("nfip_payout_usd", 0.0)
+        loss = xs.get("documented_loss_estimate_usd", 0.0)
+        if loss > 0 and (fema + sba + nfip) > loss * 1.1:
+            sig.triggered = True
+            sig.evidence = {"total_aid": fema + sba + nfip, "documented_loss": loss, "ratio": round((fema + sba + nfip) / loss, 3)}
+        return sig
+
+    def _check_dme_geo_outlier(self, ctx: dict) -> FraudSignal:
+        """FDE-026: DME supplier serving an unusually wide geographic footprint via a single prescriber."""
+        sig = FraudSignal(RULE_DME_GEO_OUTLIER, "DME geographic outlier — nationwide reach via single prescriber NPI", self.RULE_WEIGHTS[RULE_DME_GEO_OUTLIER])
+        xs = ctx.get("extra_signals", {})
+        states = xs.get("beneficiary_states_count", 0)
+        npi_pct = xs.get("single_prescriber_npi_pct", 0.0)
+        if states > 20 and npi_pct > 0.6:
+            sig.triggered = True
+            sig.evidence = {"beneficiary_states_count": states, "single_prescriber_npi_pct": npi_pct}
+        return sig
+
+    def _check_hospice_outlier(self, ctx: dict) -> FraudSignal:
+        """FDE-027: Hospice provider with high live-discharge rate and extended LOS."""
+        sig = FraudSignal(RULE_HOSPICE_OUTLIER, "Hospice LOS/live-discharge outlier — inflated terminal care billing", self.RULE_WEIGHTS[RULE_HOSPICE_OUTLIER])
+        xs = ctx.get("extra_signals", {})
+        ldr = xs.get("live_discharge_rate", 0.0)
+        los = xs.get("median_los_days", 0.0)
+        if ldr > 0.3 and los > 180:
+            sig.triggered = True
+            sig.evidence = {"live_discharge_rate": ldr, "median_los_days": los}
+        return sig
+
+    def _check_volume_spike_scheme(self, ctx: dict) -> FraudSignal:
+        """FDE-028: Emerging-scheme volume spike (CGx) — rapid scale-up by prescribers new to the code."""
+        sig = FraudSignal(RULE_VOLUME_SPIKE_SCHEME, "CGx volume spike scheme — novel-scheme rapid scale-up", self.RULE_WEIGHTS[RULE_VOLUME_SPIKE_SCHEME])
+        xs = ctx.get("extra_signals", {})
+        baseline = xs.get("baseline_daily_volume_usd", 0.0)
+        wave = xs.get("first_wave_daily_volume_usd", 0.0)
+        prior_pct = xs.get("prescriber_prior_cgx_orders_pct", 1.0)
+        if baseline > 0 and (wave / baseline) > 10 and prior_pct < 0.01:
+            sig.triggered = True
+            sig.evidence = {"volume_spike_ratio": round(wave / baseline, 1), "prescriber_prior_cgx_orders_pct": prior_pct}
+        return sig
+
+    def _check_duplicate_inspection(self, ctx: dict) -> FraudSignal:
+        """FDE-029: FSIS and FDA inspections of same facility with overlapping scope."""
+        sig = FraudSignal(RULE_DUPLICATE_INSPECTION, "Duplicate FSIS/FDA inspection — overlapping regulatory scope", self.RULE_WEIGHTS[RULE_DUPLICATE_INSPECTION])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("scope_overlap_jaccard", 0.0) > 0.4:
+            sig.triggered = True
+            sig.evidence = {"scope_overlap_jaccard": xs["scope_overlap_jaccard"]}
+        return sig
+
+    def _check_incident_dedup(self, ctx: dict) -> FraudSignal:
+        """FDE-030: TSA and CISA filed near-identical incident reports for the same event."""
+        sig = FraudSignal(RULE_INCIDENT_DEDUP, "Incident report deduplication — TSA/CISA IOC and narrative overlap", self.RULE_WEIGHTS[RULE_INCIDENT_DEDUP])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("ioc_overlap_pct", 0.0) > 0.7 and xs.get("narrative_cosine", 0.0) > 0.6:
+            sig.triggered = True
+            sig.evidence = {"ioc_overlap_pct": xs["ioc_overlap_pct"], "narrative_cosine": xs["narrative_cosine"]}
+        return sig
+
+    def _check_data_call_overlap(self, ctx: dict) -> FraudSignal:
+        """FDE-031: Multiple regulators issuing overlapping data calls to the same entity."""
+        sig = FraudSignal(RULE_DATA_CALL_OVERLAP, "Regulatory data-call overlap — duplicative reporting burden", self.RULE_WEIGHTS[RULE_DATA_CALL_OVERLAP])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("field_overlap_pct", 0.0) > 0.7 and xs.get("data_call_count", 0) >= 2:
+            sig.triggered = True
+            sig.evidence = {"field_overlap_pct": xs["field_overlap_pct"], "data_call_count": xs["data_call_count"]}
+        return sig
+
+    def _check_grant_attr_overlap(self, ctx: dict) -> FraudSignal:
+        """FDE-032: STEM grants with overlapping intervention windows and missing outcome attribution."""
+        sig = FraudSignal(RULE_GRANT_ATTR_OVERLAP, "STEM grant attribution overlap — concurrent programs without attribution method", self.RULE_WEIGHTS[RULE_GRANT_ATTR_OVERLAP])
+        xs = ctx.get("extra_signals", {})
+        overlap = xs.get("intervention_overlap_months", 0)
+        missing = xs.get("outcome_attribution_missing", False)
+        count = xs.get("grant_program_count", 0)
+        if overlap > 6 and missing and count >= 2:
+            sig.triggered = True
+            sig.evidence = {"intervention_overlap_months": overlap, "grant_program_count": count}
+        return sig
+
+    def _check_duplicate_intake(self, ctx: dict) -> FraudSignal:
+        """FDE-033: Same individual entered into both HMIS and VA Homes within 30 days."""
+        sig = FraudSignal(RULE_DUPLICATE_INTAKE, "Duplicate homeless intake — HMIS/VA dual registration", self.RULE_WEIGHTS[RULE_DUPLICATE_INTAKE])
+        xs = ctx.get("extra_signals", {})
+        dual = xs.get("hmis_vispdat") is not None and xs.get("vahomes_vispdat") is not None
+        days = xs.get("days_between_intakes", 999)
+        if dual and days < 30:
+            sig.triggered = True
+            sig.evidence = {"days_between_intakes": days, "hmis_vispdat": xs["hmis_vispdat"], "vahomes_vispdat": xs["vahomes_vispdat"]}
+        return sig
+
+    def _check_stale_recommendation(self, ctx: dict) -> FraudSignal:
+        """FDE-034: GAO priority recommendation with no activity and vacant owner for >12 months."""
+        sig = FraudSignal(RULE_STALE_RECOMMENDATION, "Stale GAO priority recommendation — no milestones, vacant ownership", self.RULE_WEIGHTS[RULE_STALE_RECOMMENDATION])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("milestones_logged_last_12m", 1) == 0 and xs.get("owner_status_vacant", False):
+            sig.triggered = True
+            sig.evidence = {"milestones_logged_last_12m": 0, "owner_status_vacant": True}
+        return sig
+
+    def _check_recon_drift(self, ctx: dict) -> FraudSignal:
+        """FDE-035: IRS legacy system reconciliation divergence exceeds SLA threshold by 2×."""
+        sig = FraudSignal(RULE_RECON_DRIFT, "IRS legacy reconciliation drift — divergence exceeds 2× SLA", self.RULE_WEIGHTS[RULE_RECON_DRIFT])
+        xs = ctx.get("extra_signals", {})
+        drift = xs.get("reconciliation_drift_pct", 0.0)
+        sla = xs.get("reconciliation_sla_pct", 1.0)
+        if sla > 0 and drift > sla * 2:
+            sig.triggered = True
+            sig.evidence = {"reconciliation_drift_pct": drift, "reconciliation_sla_pct": sla, "ratio": round(drift / sla, 2)}
+        return sig
+
+    def _check_wait_time_divergence(self, ctx: dict) -> FraudSignal:
+        """FDE-036: VA telemetry wait time exceeds reported wait time by >2× with high sigma."""
+        sig = FraudSignal(RULE_WAIT_TIME_DIVERGENCE, "VA wait-time reporting divergence — telemetry vs reported gap", self.RULE_WEIGHTS[RULE_WAIT_TIME_DIVERGENCE])
+        xs = ctx.get("extra_signals", {})
+        reported = xs.get("reported_wait_days", 0.0)
+        telemetry = xs.get("telemetry_wait_days", 0.0)
+        sigma = xs.get("wait_sigma", 0.0)
+        if reported > 0 and (telemetry / reported) > 2 and sigma > 3.0:
+            sig.triggered = True
+            sig.evidence = {"telemetry_wait_days": telemetry, "reported_wait_days": reported, "wait_sigma": sigma}
+        return sig
+
+    def _check_exception_rate_spike(self, ctx: dict) -> FraudSignal:
+        """FDE-037: FAFSA exception rate regressed by >3× vs baseline after a software release."""
+        sig = FraudSignal(RULE_EXCEPTION_RATE_SPIKE, "FAFSA exception-rate spike — regression vs baseline", self.RULE_WEIGHTS[RULE_EXCEPTION_RATE_SPIKE])
+        xs = ctx.get("extra_signals", {})
+        baseline = xs.get("baseline_exception_rate", 0.0)
+        current = xs.get("current_exception_rate", 0.0)
+        if baseline > 0 and (current / baseline) > 3:
+            sig.triggered = True
+            sig.evidence = {"current_exception_rate": current, "baseline_exception_rate": baseline, "ratio": round(current / baseline, 1)}
+        return sig
+
+    def _check_cyber_backlog(self, ctx: dict) -> FraudSignal:
+        """FDE-038: FISMA high-impact findings backlog with no remediation evidence and long age."""
+        sig = FraudSignal(RULE_CYBER_BACKLOG, "FISMA high-impact cyber backlog — stale unmitigated findings", self.RULE_WEIGHTS[RULE_CYBER_BACKLOG])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("high_impact_no_evidence", 0) > 50 and xs.get("median_open_days", 0) > 365:
+            sig.triggered = True
+            sig.evidence = {"high_impact_no_evidence": xs["high_impact_no_evidence"], "median_open_days": xs["median_open_days"]}
+        return sig
+
+    def _check_foreign_passthrough(self, ctx: dict) -> FraudSignal:
+        """FDE-039: Passthrough partnership structure routes US income to foreign terminal entities."""
+        sig = FraudSignal(RULE_FOREIGN_PASSTHROUGH, "Passthrough foreign-flow — US income routed to offshore terminal entities", self.RULE_WEIGHTS[RULE_FOREIGN_PASSTHROUGH])
+        xs = ctx.get("extra_signals", {})
+        foreign = xs.get("terminal_foreign_entities", 0)
+        us_reported = xs.get("us_source_reported_usd", 1.0)
+        if foreign >= 2 and us_reported == 0:
+            sig.triggered = True
+            sig.evidence = {"terminal_foreign_entities": foreign, "us_source_reported_usd": us_reported}
+        return sig
+
+    def _check_title_iv_risk(self, ctx: dict) -> FraudSignal:
+        """FDE-040: Title IV institution with elevated cohort default rate and 90/10 revenue ratio."""
+        sig = FraudSignal(RULE_TITLE_IV_RISK, "Title IV institution risk — elevated CDR and 90/10 ratio", self.RULE_WEIGHTS[RULE_TITLE_IV_RISK])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("cdr", 0.0) > 0.15 and xs.get("ratio_90_10", 0.0) > 0.85:
+            sig.triggered = True
+            sig.evidence = {"cdr": xs["cdr"], "ratio_90_10": xs["ratio_90_10"]}
+        return sig
+
+    def _check_import_transshipment(self, ctx: dict) -> FraudSignal:
+        """FDE-041: UFLPA transshipment signal — China imports drop while Vietnam surges with satellite match."""
+        sig = FraudSignal(RULE_IMPORT_TRANSSHIPMENT, "UFLPA import transshipment — China-to-Vietnam rerouting with satellite evidence", self.RULE_WEIGHTS[RULE_IMPORT_TRANSSHIPMENT])
+        xs = ctx.get("extra_signals", {})
+        china = xs.get("china_import_change_pct", 0.0)
+        vietnam = xs.get("vietnam_import_change_pct", 0.0)
+        sat = xs.get("satellite_supplier_match", 0.0)
+        if china < -0.7 and vietnam > 2.0 and sat > 0.6:
+            sig.triggered = True
+            sig.evidence = {"china_import_change_pct": china, "vietnam_import_change_pct": vietnam, "satellite_supplier_match": sat}
+        return sig
+
+    def _check_property_underutil(self, ctx: dict) -> FraudSignal:
+        """FDE-042: Federal real property with mean occupancy below 30%."""
+        sig = FraudSignal(RULE_PROPERTY_UNDERUTIL, "Federal real-property underutilization — occupancy below 30%", self.RULE_WEIGHTS[RULE_PROPERTY_UNDERUTIL])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("mean_occupancy_pct", 1.0) < 0.30:
+            sig.triggered = True
+            sig.evidence = {"mean_occupancy_pct": xs["mean_occupancy_pct"]}
+        return sig
+
+    def _check_sam_true_down(self, ctx: dict) -> FraudSignal:
+        """FDE-043: SAM.gov seat count significantly inflated by inactive accounts (true-down opportunity)."""
+        sig = FraudSignal(RULE_SAM_TRUE_DOWN, "SAM.gov seat true-down — >30% inactive accounts identified", self.RULE_WEIGHTS[RULE_SAM_TRUE_DOWN])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("inactive_pct_30d", 0.0) > 0.30:
+            sig.triggered = True
+            sig.evidence = {"inactive_pct_30d": xs["inactive_pct_30d"]}
+        return sig
+
+    def _check_clearance_fin_risk(self, ctx: dict) -> FraudSignal:
+        """FDE-044: Security clearance holder with foreign travel and new financial delinquencies."""
+        sig = FraudSignal(RULE_CLEARANCE_FIN_RISK, "Security-clearance financial risk — foreign travel + new delinquencies", self.RULE_WEIGHTS[RULE_CLEARANCE_FIN_RISK])
+        xs = ctx.get("extra_signals", {})
+        high_clearance = xs.get("clearance_level", "") in ("TS/SCI", "TS", "Secret")
+        if xs.get("foreign_travel_flag") and xs.get("new_delinquencies", 0) >= 3 and high_clearance:
+            sig.triggered = True
+            sig.evidence = {"foreign_travel_flag": True, "new_delinquencies": xs["new_delinquencies"], "clearance_level": xs.get("clearance_level")}
+        return sig
+
+    def _check_whistleblower_cluster(self, ctx: dict) -> FraudSignal:
+        """FDE-045: Clustered whistleblower tips targeting same entity with high cosine similarity."""
+        sig = FraudSignal(RULE_WHISTLEBLOWER_CLUSTER, "Whistleblower tip cluster — high-similarity tips targeting same entity", self.RULE_WEIGHTS[RULE_WHISTLEBLOWER_CLUSTER])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("cluster_cosine", 0.0) > 0.6 and xs.get("top_tip_score", 0.0) > 0.7:
+            sig.triggered = True
+            sig.evidence = {"cluster_cosine": xs["cluster_cosine"], "top_tip_score": xs["top_tip_score"]}
+        return sig
+
+    def _check_contractor_perf_risk(self, ctx: dict) -> FraudSignal:
+        """FDE-046: Cross-agency CPARS record shows unsatisfactory ratings with declining sentiment trend."""
+        sig = FraudSignal(RULE_CONTRACTOR_PERF_RISK, "Cross-agency CPARS performance risk — unsatisfactory ratings with declining trend", self.RULE_WEIGHTS[RULE_CONTRACTOR_PERF_RISK])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("cpars_unsat_count", 0) >= 1 and xs.get("cpars_sentiment_slope", 0.0) < -0.1:
+            sig.triggered = True
+            sig.evidence = {"cpars_unsat_count": xs["cpars_unsat_count"], "cpars_sentiment_slope": xs["cpars_sentiment_slope"]}
+        return sig
+
+    def _check_multi_program_ring(self, ctx: dict) -> FraudSignal:
+        """FDE-047: Multi-program fraud ring sharing device fingerprints and ABA routing numbers."""
+        sig = FraudSignal(RULE_MULTI_PROGRAM_RING, "Multi-program fraud ring — shared devices and ABA routing numbers", self.RULE_WEIGHTS[RULE_MULTI_PROGRAM_RING])
+        xs = ctx.get("extra_signals", {})
+        if xs.get("shared_device_fingerprints", 0) >= 3 and xs.get("shared_aba_count", 0) >= 3:
+            sig.triggered = True
+            sig.evidence = {"shared_device_fingerprints": xs["shared_device_fingerprints"], "shared_aba_count": xs["shared_aba_count"]}
+        return sig
+
     # ── Scoring helpers ──────────────────────────────────────────────────
 
     def _tier(self, score: float, triggered: list[FraudSignal]) -> str:
@@ -533,6 +853,30 @@ class FraudDetectionEngine:
             RULE_SPOOFING_CANCEL_RATE: "GAO Cat1 (Order Spoofing / Layering via Cancel Pattern)",
             RULE_SANCTIONS_LAYERING:   "GAO Cat5 (OFAC Sanctions Layering — SDN entity match)",
             RULE_RA_UPCODING:          "GAO Cat3 (Risk-Adjustment Upcoding — insufficient encounters)",
+            RULE_EITC_CROSS_CLAIM:     "GAO Cat2 (EITC Same-Child Dual-Filer Cross-Claim)",
+            RULE_DISASTER_AID_DUP:     "GAO Cat3 (Stafford Disaster-Aid Duplication — FEMA/SBA/NFIP overlap)",
+            RULE_DME_GEO_OUTLIER:      "GAO Cat2 (DME Geographic Outlier — nationwide single-prescriber reach)",
+            RULE_HOSPICE_OUTLIER:      "GAO Cat2 (Hospice LOS/Live-Discharge Outlier)",
+            RULE_VOLUME_SPIKE_SCHEME:  "GAO Cat2 (Emerging Scheme — CGx Volume Spike)",
+            RULE_DUPLICATE_INSPECTION: "GAO Cat5 (Duplicate FSIS/FDA Inspection — scope overlap)",
+            RULE_INCIDENT_DEDUP:       "GAO Cat5 (TSA/CISA Incident Report Deduplication)",
+            RULE_DATA_CALL_OVERLAP:    "GAO Cat5 (Overlapping Regulatory Data Calls)",
+            RULE_GRANT_ATTR_OVERLAP:   "GAO Cat3 (STEM Grant Attribution Overlap — concurrent programs)",
+            RULE_DUPLICATE_INTAKE:     "GAO Cat4 (HMIS/VA Duplicate Homeless Intake)",
+            RULE_STALE_RECOMMENDATION: "GAO Cat6 (Stale GAO Priority Recommendation — vacant ownership)",
+            RULE_RECON_DRIFT:          "GAO Cat1 (IRS Legacy Reconciliation Drift — SLA breach)",
+            RULE_WAIT_TIME_DIVERGENCE: "GAO Cat6 (VA Wait-Time Reporting Divergence — telemetry vs reported)",
+            RULE_EXCEPTION_RATE_SPIKE: "GAO Cat3 (FAFSA Exception-Rate Regression — post-release spike)",
+            RULE_CYBER_BACKLOG:        "GAO Cat6 (FISMA High-Impact Cyber Backlog — stale findings)",
+            RULE_FOREIGN_PASSTHROUGH:  "GAO Cat5 (Passthrough Foreign-Flow — offshore terminal entities)",
+            RULE_TITLE_IV_RISK:        "GAO Cat3 (Title IV Institution Risk — CDR and 90/10 ratio)",
+            RULE_IMPORT_TRANSSHIPMENT: "GAO Cat5 (UFLPA Import Transshipment — China-Vietnam rerouting)",
+            RULE_PROPERTY_UNDERUTIL:   "GAO Cat6 (Federal Real-Property Underutilization)",
+            RULE_SAM_TRUE_DOWN:        "GAO Cat6 (SAM.gov Seat True-Down — inactive account consolidation)",
+            RULE_CLEARANCE_FIN_RISK:   "GAO Cat4 (Security-Clearance Financial Risk — foreign travel + delinquencies)",
+            RULE_WHISTLEBLOWER_CLUSTER: "GAO Cat5 (Whistleblower Tip Cluster — corroborated entity targeting)",
+            RULE_CONTRACTOR_PERF_RISK: "GAO Cat6 (Cross-Agency CPARS Performance Risk — declining ratings)",
+            RULE_MULTI_PROGRAM_RING:   "GAO Cat4 (Multi-Program Fraud Ring — shared devices and routing numbers)",
         }
         refs = []
         seen = set()

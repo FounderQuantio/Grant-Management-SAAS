@@ -469,6 +469,151 @@ def _build_extra_signals(inp: dict) -> dict:
         if k in inp:
             xs[k] = float(inp[k])
 
+    # FDE-024: EITC cross-claim
+    if "filer_a" in inp:
+        xs["filer_a"] = inp["filer_a"]
+    if "filer_b" in inp:
+        xs["filer_b"] = inp["filer_b"]
+    if "ssa_dependency_match" in inp:
+        xs["ssa_dependency_match"] = bool(inp["ssa_dependency_match"])
+
+    # FDE-025: Disaster aid duplication
+    for k in ("fema_ihp_usd", "sba_loan_usd", "nfip_payout_usd", "documented_loss_estimate_usd"):
+        if k in inp:
+            xs[k] = float(inp[k])
+
+    # FDE-026: DME geographic outlier
+    if "beneficiary_states_count" in inp:
+        xs["beneficiary_states_count"] = int(inp["beneficiary_states_count"])
+    if "single_prescriber_npi_pct" in inp:
+        xs["single_prescriber_npi_pct"] = float(inp["single_prescriber_npi_pct"])
+
+    # FDE-027: Hospice LOS/live-discharge outlier
+    if "live_discharge_rate" in inp:
+        xs["live_discharge_rate"] = float(inp["live_discharge_rate"])
+    if "median_los_days" in inp:
+        xs["median_los_days"] = float(inp["median_los_days"])
+
+    # FDE-028: Volume spike scheme (CGx)
+    for k in ("baseline_daily_volume_usd", "first_wave_daily_volume_usd", "prescriber_prior_cgx_orders_pct"):
+        if k in inp:
+            xs[k] = float(inp[k])
+
+    # FDE-029: Duplicate inspection
+    if "scope_overlap_jaccard" in inp:
+        xs["scope_overlap_jaccard"] = float(inp["scope_overlap_jaccard"])
+
+    # FDE-030: Incident report dedup
+    if "ioc_overlap_pct" in inp:
+        xs["ioc_overlap_pct"] = float(inp["ioc_overlap_pct"])
+    if "narrative_cosine" in inp:
+        xs["narrative_cosine"] = float(inp["narrative_cosine"])
+
+    # FDE-031: Data call overlap
+    if "field_overlap_pct" in inp:
+        xs["field_overlap_pct"] = float(inp["field_overlap_pct"])
+    if "requests" in inp and isinstance(inp["requests"], list):
+        xs["data_call_count"] = len(inp["requests"])
+
+    # FDE-032: STEM grant attribution overlap
+    if "intervention_overlap_months" in inp:
+        xs["intervention_overlap_months"] = int(inp["intervention_overlap_months"])
+    if "outcome_attribution_method" in inp:
+        xs["outcome_attribution_missing"] = inp["outcome_attribution_method"] is None
+    if "programs" in inp and isinstance(inp["programs"], list):
+        xs["grant_program_count"] = len(inp["programs"])
+
+    # FDE-033: Duplicate homeless intake
+    if "hmis_vispdat" in inp:
+        xs["hmis_vispdat"] = inp["hmis_vispdat"]
+    if "vahomes_vispdat" in inp:
+        xs["vahomes_vispdat"] = inp["vahomes_vispdat"]
+    if "days_between_intakes" in inp:
+        xs["days_between_intakes"] = int(inp["days_between_intakes"])
+
+    # FDE-034: Stale recommendation
+    if "milestones_logged_last_12m" in inp:
+        xs["milestones_logged_last_12m"] = int(inp["milestones_logged_last_12m"])
+    if "current_owner_status" in inp:
+        xs["owner_status_vacant"] = "VACANT" in str(inp["current_owner_status"]).upper()
+
+    # FDE-035: Reconciliation drift
+    if "divergence_pct" in inp:
+        xs["reconciliation_drift_pct"] = float(inp["divergence_pct"])
+    if "sla_pct" in inp:
+        xs["reconciliation_sla_pct"] = float(inp["sla_pct"])
+
+    # FDE-036: Wait-time divergence
+    if "telemetry_wait_days_median" in inp:
+        xs["telemetry_wait_days"] = float(inp["telemetry_wait_days_median"])
+    if "reported_wait_days" in inp:
+        xs["reported_wait_days"] = float(inp["reported_wait_days"])
+    if "sigma" in inp:
+        xs["wait_sigma"] = float(inp["sigma"])
+
+    # FDE-037: Exception rate spike
+    if "baseline_exception_rate" in inp:
+        xs["baseline_exception_rate"] = float(inp["baseline_exception_rate"])
+    if "current_exception_rate" in inp:
+        xs["current_exception_rate"] = float(inp["current_exception_rate"])
+
+    # FDE-038: Cyber backlog
+    if "high_impact_no_evidence" in inp:
+        xs["high_impact_no_evidence"] = int(inp["high_impact_no_evidence"])
+    if "median_open_days" in inp:
+        xs["median_open_days"] = int(inp["median_open_days"])
+
+    # FDE-039: Foreign passthrough
+    if "terminal_foreign_entities" in inp:
+        xs["terminal_foreign_entities"] = int(inp["terminal_foreign_entities"])
+    if "us_source_reported_usd" in inp:
+        xs["us_source_reported_usd"] = float(inp["us_source_reported_usd"])
+
+    # FDE-040: Title IV risk
+    if "cdr" in inp:
+        xs["cdr"] = float(inp["cdr"])
+    if "ratio_90_10" in inp:
+        xs["ratio_90_10"] = float(inp["ratio_90_10"])
+
+    # FDE-041: Import transshipment
+    for k in ("china_import_change_pct", "vietnam_import_change_pct", "satellite_supplier_match"):
+        if k in inp:
+            xs[k] = float(inp[k])
+
+    # FDE-042: Property underutilization
+    if "mean_occupancy_pct" in inp:
+        xs["mean_occupancy_pct"] = float(inp["mean_occupancy_pct"])
+
+    # FDE-043: SAM true-down
+    if "inactive_pct_30d" in inp:
+        xs["inactive_pct_30d"] = float(inp["inactive_pct_30d"])
+
+    # FDE-044: Clearance financial risk
+    if "foreign_travel_flag" in inp:
+        xs["foreign_travel_flag"] = bool(inp["foreign_travel_flag"])
+    if "new_delinquencies" in inp:
+        xs["new_delinquencies"] = int(inp["new_delinquencies"])
+    if "clearance_level" in inp:
+        xs["clearance_level"] = str(inp["clearance_level"])
+
+    # FDE-045: Whistleblower cluster
+    if "cluster_cosine" in inp:
+        xs["cluster_cosine"] = float(inp["cluster_cosine"])
+    if "top_tip_score" in inp:
+        xs["top_tip_score"] = float(inp["top_tip_score"])
+
+    # FDE-046: Contractor performance risk
+    if "unsat_count" in inp:
+        xs["cpars_unsat_count"] = int(inp["unsat_count"])
+    if "sentiment_trend_slope" in inp:
+        xs["cpars_sentiment_slope"] = float(inp["sentiment_trend_slope"])
+
+    # FDE-047: Multi-program ring
+    if "shared_device_fingerprints" in inp:
+        xs["shared_device_fingerprints"] = int(inp["shared_device_fingerprints"])
+    if "shared_aba_count" in inp:
+        xs["shared_aba_count"] = int(inp["shared_aba_count"])
+
     return xs
 
 
@@ -573,84 +718,33 @@ def simulate_scenario(inputs: dict, features: list[str]) -> ScenarioResult:
 # analysis, multi-agency coordination, etc.).  Tests with these alert types
 # are skipped with a documented reason rather than counted as failures.
 OUT_OF_SCOPE_ALERT_TYPES: frozenset[str] = frozenset({
-    # Requires IRS e-file / cross-program tax credit data
-    "EITC_CROSS_CLAIM",
-    # Requires FEMA disaster registration database
-    "STAFFORD_DOB_DETECTED",
-    # Requires geographic service-area analysis
-    "DME_GEOGRAPHIC_MISMATCH",
-    # Requires clinical length-of-stay ML model
-    "HOSPICE_LOS_LIVE_DISCHARGE_OUTLIER",
-    # Requires real-time ML / novel scheme classifier
-    "EMERGING_SCHEME_CGX",
-    # "REFUND_IDENTITY_THEFT_BURST" — handled by FDE-016 (returns/device ratio)
-    # Requires multi-agency inspection coordination records
-    "DUPLICATE_INSPECTION_RISK",
-    # Requires COB (coordination-of-benefits) payer data
-    # "CROSS_PAYER_DUPLICATE" — handled via FDE-011/012 cross-payer charges
-    # Requires incident report deduplication system
-    "INCIDENT_REPORT_DEDUP",
-    # Requires data-call tracking / agency coordination
-    "DATA_CALL_OVERLAP",
-    # Requires research grant attribution database
-    "STEM_OVERLAP_ATTRIBUTION",
-    # Requires HMIS deduplication
-    "DUPLICATE_HOMELESS_INTAKE",
-    # "DOCUMENT_REUSE_OPPORTUNITY" — handled by FDE-011/012 (duplicate_doc_hash / submissions)
-    # "BROADBAND_DUPLICATE_FUNDING" — handled via FDE-009/012 dual-award charges
-    # "CROSS_SERVICE_PARTS_DUPLICATION" — handled via FDE-009/012 dual-service charges
-    # Requires audit backlog management system
-    "STALE_PRIORITY_RECOMMENDATION",
-    # Requires IRS legacy reconciliation system access
-    "STRANGLER_RECONCILIATION_DRIFT",
-    # "DNP_DECEASED_BYPASS" — handled by FDE-005 (dnp_response=DECEASED → excluded)
-    # Requires VA telemetry / appointment system data
-    "WAIT_TIME_REPORTING_DIVERGENCE",
     # Requires defense cost model not covered by EVM rules
     "MISSION_COST_GROWTH_FORECAST_DEEP",   # placeholder — TC-036 handled by FDE-014
-    # Requires Title IV institution risk scoring (HCM2/LOC classification model)
-    "TITLE_IV_INSTITUTION_RISK",
-    # Requires Title IV FAFSA exception rate regression testing
-    "FAFSA_EXCEPTION_RELEASE_REGRESSION",
-    # Requires FISMA / cybersecurity backlog data
-    "CYBER_BACKLOG_PRIORITIZATION",
-    # Requires money-flow graph / OFAC analysis beyond FDE-022
-    "PASSTHROUGH_FOREIGN_FLOW",
-    # Requires forced-labor supply-chain tracking (UFLPA)
-    "UFLPA_TRANSSHIPMENT_SUSPECTED",
-    # Requires SSA DMF pre-payment block capability
-    # "PRE_AWARD_INTEGRITY_FAIL" — handled via FDE-005 (boi_overlap_debarred → excluded)
-    # "BURN_RATE_MILESTONE_DIVERGENCE" — handled via FDE-006/009 (q1_burn > quarterly budget)
-    # Requires real property utilization data
-    "REAL_PROPERTY_UNDERUTILIZATION",
-    # Requires SAM.gov entity consolidation analysis
-    "SAM_TRUE_DOWN_RECOMMENDED",
-    # "DE_MINIMIS_SPLITTING" — handled via FDE-004/008 (shipments_24h + avg_value_usd)
-    # Requires foreign financial risk assessment
-    "CV_FINANCIAL_FOREIGN_RISK",
-    # Requires whistleblower complaint clustering
-    "WHISTLEBLOWER_CLUSTER",
-    # Requires cross-agency performance data
-    "CROSS_AGENCY_PERFORMANCE_RISK",
-    # Requires multi-program fraud ring detection
-    "MULTI_PROGRAM_RING",
-    # "LABOR_CATEGORY_MISCLASSIFICATION" — handled by FDE-013
-    # "MDAP_OVERRUN_FORECAST" / "MISSION_COST_GROWTH_FORECAST" — handled by FDE-014
-    # "BID_RIGGING_PATTERN" — handled by FDE-015
-    # "REFUND_IDENTITY_THEFT_BURST" — handled by FDE-016
-    # "DOCUMENT_REUSE_OPPORTUNITY" — handled by FDE-011/012 (duplicate_doc_hash / submissions)
-    # "DNP_DECEASED_BYPASS" — handled by FDE-005 (dnp_response=DECEASED → excluded)
-    # "CRYPTO_UNDERREPORT" — handled by FDE-020
-    # "AUTH_WINDOW_VIOLATION" — handled by FDE-019
-    # "PELL_RING_LOWTOUCH_INSTITUTION" — handled by FDE-016
-    # "RA_UPCODING_PATTERN" — handled by FDE-023
-    # "SANCTIONS_EVASION_DETECTED" — handled by FDE-022
-    # "SPOOFING_LAYERING" — handled by FDE-021
-    # "PRE_DMF_DECEDENT_BLOCK" — handled by FDE-005 (state_vital_record_date → excluded)
-    # "CROSS_PROGRAM_DEVICE_REUSE" — handled by FDE-016
-    # "SYNTHETIC_ID_ECBSV_MISMATCH" — handled by FDE-017
-    # "CROSS_PROGRAM_REVOKED_PROVIDER" — handled by FDE-005 (medicare_revocation_date → excluded)
-    # "CROSS_OIG_ENTITY_LINK" — handled by FDE-018
+    # All other alert types are handled by FDE-001..FDE-047
+    # "EITC_CROSS_CLAIM" — handled by FDE-024
+    # "STAFFORD_DOB_DETECTED" — handled by FDE-025
+    # "DME_GEOGRAPHIC_MISMATCH" — handled by FDE-026
+    # "HOSPICE_LOS_LIVE_DISCHARGE_OUTLIER" — handled by FDE-027
+    # "EMERGING_SCHEME_CGX" — handled by FDE-028
+    # "DUPLICATE_INSPECTION_RISK" — handled by FDE-029
+    # "INCIDENT_REPORT_DEDUP" — handled by FDE-030
+    # "DATA_CALL_OVERLAP" — handled by FDE-031
+    # "STEM_OVERLAP_ATTRIBUTION" — handled by FDE-032
+    # "DUPLICATE_HOMELESS_INTAKE" — handled by FDE-033
+    # "STALE_PRIORITY_RECOMMENDATION" — handled by FDE-034
+    # "STRANGLER_RECONCILIATION_DRIFT" — handled by FDE-035
+    # "WAIT_TIME_REPORTING_DIVERGENCE" — handled by FDE-036
+    # "FAFSA_EXCEPTION_RELEASE_REGRESSION" — handled by FDE-037
+    # "CYBER_BACKLOG_PRIORITIZATION" — handled by FDE-038
+    # "PASSTHROUGH_FOREIGN_FLOW" — handled by FDE-039
+    # "TITLE_IV_INSTITUTION_RISK" — handled by FDE-040
+    # "UFLPA_TRANSSHIPMENT_SUSPECTED" — handled by FDE-041
+    # "REAL_PROPERTY_UNDERUTILIZATION" — handled by FDE-042
+    # "SAM_TRUE_DOWN_RECOMMENDED" — handled by FDE-043
+    # "CV_FINANCIAL_FOREIGN_RISK" — handled by FDE-044
+    # "WHISTLEBLOWER_CLUSTER" — handled by FDE-045
+    # "CROSS_AGENCY_PERFORMANCE_RISK" — handled by FDE-046
+    # "MULTI_PROGRAM_RING" — handled by FDE-047
 })
 
 
