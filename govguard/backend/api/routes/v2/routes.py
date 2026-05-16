@@ -265,11 +265,12 @@ async def run_compliance_monitor(
         _log.error("compliance_monitor.check_error", error=str(e))
         return {"error": str(e), "violation_count": 0, "violations": [], "version": "v2"}
 
-    # Auto-create CAPs for material weaknesses
+    # Auto-create CAPs for material weaknesses (best-effort — never block violation response)
     auto_caps_created = 0
     for v in violations:
         if v.auto_cap_trigger:
             try:
+                await db.execute(text("SAVEPOINT cap_insert"))
                 actions = _controls_auto.process_compliance_violation(v.to_dict(), str(user.tenant_id))
                 for action in actions:
                     if action.action_type == "AUTO_CAP":
@@ -292,9 +293,22 @@ async def run_compliance_monitor(
                             },
                         )
                         auto_caps_created += 1
+                await db.execute(text("RELEASE SAVEPOINT cap_insert"))
             except Exception as e:
                 _log.warning("compliance_monitor.cap_error", error=str(e))
-    await db.commit()
+                try:
+                    await db.execute(text("ROLLBACK TO SAVEPOINT cap_insert"))
+                    await db.execute(text("RELEASE SAVEPOINT cap_insert"))
+                except Exception:
+                    pass
+    try:
+        await db.commit()
+    except Exception as e:
+        _log.warning("compliance_monitor.commit_error", error=str(e))
+        try:
+            await db.rollback()
+        except Exception:
+            pass
 
     return {
         "grant_id": str(grant_id),
