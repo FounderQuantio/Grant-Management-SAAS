@@ -149,7 +149,7 @@ function TxFraudButton({ txId }: { txId: string }) {
                   </div>
                 </div>
               )}
-              {assessment.explanation && (
+              {!!assessment.explanation && (
                 <p className="text-gray-600 bg-gray-50 p-3 rounded-lg">{String(assessment.explanation)}</p>
               )}
             </div>
