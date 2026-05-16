@@ -172,28 +172,32 @@ async def label_fraud(
     """
     confirmed_fraud = payload.confirmed_fraud
 
-    result = await db.execute(
-        text("""
-            UPDATE fraud_assessments
-            SET confirmed_label = :label,
-                confirmed_at    = NOW()
-            WHERE transaction_id = :tx_id
-              AND tenant_id      = :tid
-              AND id = (
-                SELECT id FROM fraud_assessments
-                WHERE transaction_id = :tx_id AND tenant_id = :tid
-                ORDER BY created_at DESC LIMIT 1
-              )
-            RETURNING id
-        """),
-        {"label": bool(confirmed_fraud), "tx_id": str(tx_id), "tid": str(user.tenant_id)},
-    )
-    row = result.fetchone()
-    if not row:
-        return {"error": "No assessment found for this transaction"}, 404
+    try:
+        result = await db.execute(
+            text("""
+                UPDATE fraud_assessments
+                SET confirmed_label = :label,
+                    confirmed_at    = NOW()
+                WHERE transaction_id = :tx_id
+                  AND tenant_id      = :tid
+                  AND id = (
+                    SELECT id FROM fraud_assessments
+                    WHERE transaction_id = :tx_id AND tenant_id = :tid
+                    ORDER BY created_at DESC LIMIT 1
+                  )
+                RETURNING id
+            """),
+            {"label": bool(confirmed_fraud), "tx_id": str(tx_id), "tid": str(user.tenant_id)},
+        )
+        row = result.fetchone()
+        if not row:
+            return {"error": "No assessment found for this transaction", "tx_id": str(tx_id), "tenant_id": str(user.tenant_id)}
 
-    await db.commit()
-    return {"labeled": True, "transaction_id": str(tx_id), "confirmed_fraud": confirmed_fraud}
+        await db.commit()
+        return {"labeled": True, "transaction_id": str(tx_id), "confirmed_fraud": confirmed_fraud}
+    except Exception as e:
+        await db.rollback()
+        return {"error": str(e), "transaction_id": str(tx_id)}
 
 
 # ────────────────────────────────────────────────────────────────────────────
