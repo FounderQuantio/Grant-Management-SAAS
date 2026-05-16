@@ -207,28 +207,48 @@ async def run_compliance_monitor(
     """
     # set_tenant skipped — v2 routes filter by tenant_id explicitly in every query
 
-    grant = await db.get(Grant, grant_id)
+    import structlog as _slog
+    _log = _slog.get_logger()
+
+    try:
+        grant = await db.get(Grant, grant_id)
+    except Exception as e:
+        _log.error("compliance_monitor.grant_fetch_error", error=str(e))
+        return {"error": str(e), "violation_count": 0, "violations": [], "version": "v2"}
+
     if not grant or str(grant.tenant_id) != str(user.tenant_id):
-        return {"error": "Grant not found"}, 404
+        return {"error": "Grant not found", "violation_count": 0, "violations": [], "version": "v2"}
 
-    txns_result = await db.execute(
-        text("SELECT * FROM transactions WHERE grant_id=:gid AND tenant_id=:tid LIMIT 500"),
-        {"gid": str(grant_id), "tid": str(user.tenant_id)},
-    )
-    transactions = [dict(r) for r in txns_result.mappings()]
+    try:
+        txns_result = await db.execute(
+            text("SELECT * FROM transactions WHERE grant_id=:gid AND tenant_id=:tid LIMIT 500"),
+            {"gid": str(grant_id), "tid": str(user.tenant_id)},
+        )
+        transactions = [dict(r) for r in txns_result.mappings()]
 
-    ctrls_result = await db.execute(
-        text("SELECT * FROM compliance_controls WHERE grant_id=:gid AND tenant_id=:tid"),
-        {"gid": str(grant_id), "tid": str(user.tenant_id)},
-    )
-    controls = [dict(r) for r in ctrls_result.mappings()]
+        ctrls_result = await db.execute(
+            text("SELECT * FROM compliance_controls WHERE grant_id=:gid AND tenant_id=:tid"),
+            {"gid": str(grant_id), "tid": str(user.tenant_id)},
+        )
+        controls = [dict(r) for r in ctrls_result.mappings()]
+    except Exception as e:
+        _log.error("compliance_monitor.query_error", error=str(e))
+        return {"error": str(e), "violation_count": 0, "violations": [], "version": "v2"}
 
     days_since = 0
     if grant.activated_at:
         from datetime import datetime, timezone
-        days_since = (datetime.now(timezone.utc) - grant.activated_at).days
+        try:
+            act = grant.activated_at
+            if act.tzinfo is None:
+                from datetime import timezone as tz
+                act = act.replace(tzinfo=tz.utc)
+            days_since = (datetime.now(timezone.utc) - act).days
+        except Exception:
+            days_since = 0
 
-    violations = _compliance_mon.check_all(
+    try:
+        violations = _compliance_mon.check_all(
         grant_id=str(grant_id),
         tenant_id=str(user.tenant_id),
         grant={
@@ -241,32 +261,39 @@ async def run_compliance_monitor(
         subrecipients=[],
         days_since_activation=days_since,
     )
+    except Exception as e:
+        _log.error("compliance_monitor.check_error", error=str(e))
+        return {"error": str(e), "violation_count": 0, "violations": [], "version": "v2"}
 
     # Auto-create CAPs for material weaknesses
     auto_caps_created = 0
     for v in violations:
         if v.auto_cap_trigger:
-            actions = _controls_auto.process_compliance_violation(v.to_dict(), str(user.tenant_id))
-            for action in actions:
-                if action.action_type == "AUTO_CAP":
-                    payload = action.payload
-                    await db.execute(
-                        text("""
-                            INSERT INTO corrective_action_plans
-                              (tenant_id, finding_id, response_text, due_date, status)
-                            SELECT :tid, id, :resp, :due, 'open'
-                            FROM audit_findings
-                            WHERE tenant_id=:tid AND grant_id=:gid AND status='open'
-                            LIMIT 1
-                        """),
-                        {
-                            "tid": str(user.tenant_id),
-                            "resp": payload.get("recommended_remediation", "Remediate per CAP"),
-                            "due": payload.get("suggested_due_date", ""),
-                            "gid": str(grant_id),
-                        },
-                    )
-                    auto_caps_created += 1
+            try:
+                actions = _controls_auto.process_compliance_violation(v.to_dict(), str(user.tenant_id))
+                for action in actions:
+                    if action.action_type == "AUTO_CAP":
+                        payload = action.payload
+                        due = payload.get("suggested_due_date") or None
+                        await db.execute(
+                            text("""
+                                INSERT INTO corrective_action_plans
+                                  (tenant_id, finding_id, response_text, due_date, status)
+                                SELECT :tid, id, :resp, :due, 'open'
+                                FROM audit_findings
+                                WHERE tenant_id=:tid AND grant_id=:gid AND status='open'
+                                LIMIT 1
+                            """),
+                            {
+                                "tid": str(user.tenant_id),
+                                "resp": payload.get("recommended_remediation", "Remediate per CAP"),
+                                "due": due,
+                                "gid": str(grant_id),
+                            },
+                        )
+                        auto_caps_created += 1
+            except Exception as e:
+                _log.warning("compliance_monitor.cap_error", error=str(e))
     await db.commit()
 
     return {
