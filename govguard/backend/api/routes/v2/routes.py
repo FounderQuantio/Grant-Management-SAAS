@@ -16,7 +16,7 @@ from sqlalchemy import select, text
 
 from core.auth import get_current_user_or_service, UserContext
 from core.db import get_db
-from core.models import Transaction, Grant, Vendor
+from core.models import Transaction, Grant, Vendor, FraudAssessmentLog
 
 # v2 services
 from services.fraud_detection.engine import FraudDetectionEngine
@@ -122,32 +122,21 @@ async def assess_fraud(
 
     # Log to ML training pipeline — best-effort, never blocks the response
     try:
-        await db.execute(
-            text("""
-                INSERT INTO fraud_assessments
-                  (tenant_id, transaction_id, composite_score, risk_tier,
-                   triggered_rules, recommended_action, gao_references,
-                   explanation, signal_detail, engine_version)
-                VALUES
-                  (:tid, :tx_id, :score, :tier,
-                   :triggered, :action, :gao_refs,
-                   :explanation, :signal_detail::jsonb, 'v2.0.0')
-            """),
-            {
-                "tid": str(user.tenant_id),
-                "tx_id": str(tx_id),
-                "score": assessment.composite_score,
-                "tier": assessment.risk_tier,
-                "triggered": assessment.triggered_rules,
-                "action": assessment.recommended_action,
-                "gao_refs": assessment.gao_references,
-                "explanation": assessment.explanation,
-                "signal_detail": _json.dumps([
-                    {"rule": s.rule_id, "triggered": s.triggered, "weight": s.weight}
-                    for s in assessment.signals
-                ]),
-            },
-        )
+        db.add(FraudAssessmentLog(
+            tenant_id=user.tenant_id,
+            transaction_id=tx_id,
+            composite_score=assessment.composite_score,
+            risk_tier=assessment.risk_tier,
+            triggered_rules=assessment.triggered_rules,
+            recommended_action=assessment.recommended_action,
+            gao_references=assessment.gao_references,
+            explanation=assessment.explanation,
+            signal_detail=[
+                {"rule": s.rule_id, "triggered": s.triggered, "weight": s.weight}
+                for s in assessment.signals
+            ],
+            engine_version="v2.0.0",
+        ))
     except Exception as _e:
         import structlog as _slog
         _slog.get_logger().warning("fraud_assess.log_error", error=str(_e))
@@ -575,32 +564,21 @@ async def bulk_fraud_scan(
             )
             # Log to ML training pipeline
             try:
-                await db.execute(
-                    text("""
-                        INSERT INTO fraud_assessments
-                          (tenant_id, transaction_id, composite_score, risk_tier,
-                           triggered_rules, recommended_action, gao_references,
-                           explanation, signal_detail, engine_version)
-                        VALUES
-                          (:tid, :tx_id, :score, :tier,
-                           :triggered, :action, :gao_refs,
-                           :explanation, :signal_detail::jsonb, 'v2.0.0')
-                    """),
-                    {
-                        "tid": str(user.tenant_id),
-                        "tx_id": tx_id,
-                        "score": assessment.composite_score,
-                        "tier": assessment.risk_tier,
-                        "triggered": assessment.triggered_rules,
-                        "action": assessment.recommended_action,
-                        "gao_refs": assessment.gao_references,
-                        "explanation": assessment.explanation,
-                        "signal_detail": _json.dumps([
-                            {"rule": s.rule_id, "triggered": s.triggered, "weight": s.weight}
-                            for s in assessment.signals
-                        ]),
-                    },
-                )
+                db.add(FraudAssessmentLog(
+                    tenant_id=user.tenant_id,
+                    transaction_id=UUID(tx_id),
+                    composite_score=assessment.composite_score,
+                    risk_tier=assessment.risk_tier,
+                    triggered_rules=assessment.triggered_rules,
+                    recommended_action=assessment.recommended_action,
+                    gao_references=assessment.gao_references,
+                    explanation=assessment.explanation,
+                    signal_detail=[
+                        {"rule": s.rule_id, "triggered": s.triggered, "weight": s.weight}
+                        for s in assessment.signals
+                    ],
+                    engine_version="v2.0.0",
+                ))
             except Exception:
                 pass
             assessed += 1
