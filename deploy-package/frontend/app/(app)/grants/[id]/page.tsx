@@ -49,9 +49,9 @@ function AISection({
   title: string;
   icon: React.ElementType;
   onRun: () => void;
-  result: unknown;
+  result: object | null;
   loading: boolean;
-  children: (data: unknown) => React.ReactNode;
+  children: (data: object) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -166,13 +166,13 @@ export default function GrantDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const { data, isLoading } = useSWR(`/api/grants/${id}`, fetcher);
 
-  const [fraudResult, setFraudResult]       = useState<unknown>(null);
+  const [fraudResult, setFraudResult]       = useState<object | null>(null);
   const [fraudLoading, setFraudLoading]     = useState(false);
-  const [anomalyResult, setAnomalyResult]   = useState<unknown>(null);
+  const [anomalyResult, setAnomalyResult]   = useState<object | null>(null);
   const [anomalyLoading, setAnomalyLoading] = useState(false);
-  const [compResult, setCompResult]         = useState<unknown>(null);
+  const [compResult, setCompResult]         = useState<object | null>(null);
   const [compLoading, setCompLoading]       = useState(false);
-  const [riskResult, setRiskResult]         = useState<unknown>(null);
+  const [riskResult, setRiskResult]         = useState<object | null>(null);
   const [riskLoading, setRiskLoading]       = useState(false);
 
   const runFraudScan = async () => {
