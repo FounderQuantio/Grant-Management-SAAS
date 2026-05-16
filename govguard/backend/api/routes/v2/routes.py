@@ -457,6 +457,7 @@ async def bulk_fraud_scan(
 
     # Run fraud engine inline for each pending transaction (no Celery dependency)
     assessed = 0
+    skipped = []
     for tx_id in tx_ids:
         try:
             tx_result = await db.execute(
@@ -496,14 +497,17 @@ async def bulk_fraud_scan(
                  "id": tx_id, "tenant": str(user.tenant_id)},
             )
             assessed += 1
-        except Exception:
-            pass
+        except Exception as e:
+            import structlog as _slog
+            _slog.get_logger().warning("bulk_scan.tx_error", tx_id=tx_id, error=str(e))
+            skipped.append({"tx_id": tx_id, "error": str(e)})
 
     await db.commit()
 
     return {
         "grant_id": str(grant_id),
         "transactions_queued": assessed,
+        "skipped": skipped,
         "message": f"Fraud assessment completed for {assessed} pending transactions",
         "version": "v2",
     }
