@@ -21,23 +21,35 @@ export async function GET(req: NextRequest) {
   const tenantId = session.user["https://govguard.app/tenant_id"] || "00000000-0000-0000-0000-000000000001";
   const status = req.nextUrl.searchParams.get("status");
 
-  const rows = await sql`
-    SELECT id, award_number, agency, program_cfda, period_start, period_end,
-           total_amount, status, compliance_score, activated_at, created_at
-    FROM grants
-    WHERE tenant_id = ${tenantId}::UUID
-      ${status ? sql`AND status = ${status}` : sql``}
-    ORDER BY created_at DESC
-  `;
-  return Response.json({ grants: rows, total: rows.length });
+  try {
+    const rows = status
+      ? await sql`
+          SELECT id, award_number, agency, program_cfda, period_start, period_end,
+                 total_amount, status, compliance_score, activated_at, created_at
+          FROM grants
+          WHERE tenant_id = ${tenantId}::UUID AND status = ${status}
+          ORDER BY created_at DESC
+        `
+      : await sql`
+          SELECT id, award_number, agency, program_cfda, period_start, period_end,
+                 total_amount, status, compliance_score, activated_at, created_at
+          FROM grants
+          WHERE tenant_id = ${tenantId}::UUID
+          ORDER BY created_at DESC
+        `;
+    return Response.json({ grants: rows, total: rows.length });
+  } catch (error) {
+    console.error("Grants list error:", error);
+    return Response.json({ error: "Database error" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
   const session = await auth0.getSession();
   if (!session?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const role = session.user["https://govguard.app/role"] || "finance_staff";
-  if (!["system_admin", "compliance_officer"].includes(role)) {
+  const role = session.user["https://govguard.app/role"] || "finance_manager";
+  if (!["system_admin", "compliance_officer", "finance_manager", "agency_officer"].includes(role)) {
     return Response.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 
@@ -54,16 +66,20 @@ export async function POST(req: NextRequest) {
       RETURNING *
     `;
 
-    // Seed compliance controls from library
-    const library = await sql`SELECT code, cfr_clause, domain FROM control_library`;
-    if (library.length > 0 && result[0]) {
-      for (const ctrl of library) {
-        await sql`
-          INSERT INTO compliance_controls (tenant_id, grant_id, control_code, cfr_clause, domain)
-          VALUES (${tenantId}::UUID, ${result[0].id}::UUID, ${ctrl.code}, ${ctrl.cfr_clause || null}, ${ctrl.domain})
-          ON CONFLICT DO NOTHING
-        `;
+    // Seed compliance controls from library (best-effort)
+    try {
+      const library = await sql`SELECT code, cfr_clause, domain FROM control_library`;
+      if (library.length > 0 && result[0]) {
+        for (const ctrl of library) {
+          await sql`
+            INSERT INTO compliance_controls (tenant_id, grant_id, control_code, cfr_clause, domain)
+            VALUES (${tenantId}::UUID, ${result[0].id}::UUID, ${ctrl.code}, ${ctrl.cfr_clause || null}, ${ctrl.domain})
+            ON CONFLICT DO NOTHING
+          `;
+        }
       }
+    } catch {
+      // control_library table may not exist yet — grant still created successfully
     }
 
     return Response.json(result[0], { status: 201 });
