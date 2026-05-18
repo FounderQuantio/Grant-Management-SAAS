@@ -30,6 +30,19 @@ import structlog
 
 log = structlog.get_logger()
 
+# Lazy import to avoid circular deps; classifier is optional
+_classifier = None
+
+def _get_classifier():
+    global _classifier
+    if _classifier is None:
+        try:
+            from ml.fraud_classifier import FraudClassifier
+            _classifier = FraudClassifier()
+        except Exception:
+            _classifier = False  # mark as unavailable so we don't retry
+    return _classifier if _classifier is not False else None
+
 # ── Rule IDs (traceable to GAO document) ──────────────────────────────────
 
 RULE_DUPLICATE_EXACT      = "FDE-001"   # Cat 1 Ex 10
@@ -217,8 +230,19 @@ class FraudDetectionEngine:
         )
 
         triggered = [s for s in signals if s.triggered]
-        raw_score = sum(s.weight * 10 for s in triggered)
-        composite = min(100.0, round(raw_score, 2))
+
+        # Phase 2: use trained XGBoost model if available; fall back to weighted sum
+        clf = _get_classifier()
+        if clf and clf.available():
+            try:
+                prob = clf.predict_proba(signals)
+                composite = round(min(100.0, prob * 100.0), 2)
+                log.debug("fraud_engine.ml_score", composite=composite, tx=transaction_id)
+            except Exception as exc:
+                log.warning("fraud_engine.ml_fallback", error=str(exc))
+                composite = min(100.0, round(sum(s.weight * 10 for s in triggered), 2))
+        else:
+            composite = min(100.0, round(sum(s.weight * 10 for s in triggered), 2))
 
         tier = self._tier(composite, triggered)
         action = self._action(tier, triggered)
