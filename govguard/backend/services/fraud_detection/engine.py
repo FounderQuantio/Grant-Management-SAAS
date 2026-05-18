@@ -39,7 +39,8 @@ def _get_classifier():
         try:
             from ml.fraud_classifier import FraudClassifier
             _classifier = FraudClassifier()
-        except Exception:
+        except Exception as exc:
+            log.warning("fraud_classifier.import_failed", error=str(exc))
             _classifier = False  # mark as unavailable so we don't retry
     return _classifier if _classifier is not False else None
 
