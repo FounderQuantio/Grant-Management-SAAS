@@ -14,6 +14,7 @@ export async function GET() {
     AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET ? "set" : "*** MISSING ***",
     AUTH0_SECRET: process.env.AUTH0_SECRET ? "set" : "*** MISSING ***",
     APP_BASE_URL: process.env.APP_BASE_URL ?? "(not set — will infer from request)",
+    BACKEND_URL: process.env.BACKEND_URL ?? "(not set — using localhost:8000)",
     NODE_ENV: process.env.NODE_ENV,
   };
 
