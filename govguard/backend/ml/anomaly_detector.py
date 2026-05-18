@@ -120,7 +120,7 @@ def extract_features(
     unique_vendors_30d = len({t.get("vendor_id") for t in grant_30d})
 
     # Budget utilisation (total spent / total budget)
-    budget_util = min(2.0, (total_grant_spend) / max(grant_total_budget, 1.0))
+    budget_util = min(10.0, (total_grant_spend) / max(grant_total_budget, 1.0))
 
     return [
         math.log1p(amount),                                          # log_amount
@@ -156,8 +156,8 @@ class AnomalyDetector:
     _model = None
     _load_attempted: bool = False
 
-    THRESHOLD_WARNING  = 0.60
-    THRESHOLD_CRITICAL = 0.80
+    THRESHOLD_WARNING  = 0.58
+    THRESHOLD_CRITICAL = 0.75
 
     def __new__(cls) -> "AnomalyDetector":
         if cls._instance is None:

@@ -33,8 +33,8 @@ def _make_normal_tx(vendors: list[str], categories: list[str]) -> tuple[dict, li
     vid = random.choice(vendors)
     cat = random.choice(categories)
 
-    # Normal transaction amount: log-normal distribution centred around $15k
-    amount = max(500.0, round(random.lognormvariate(9.5, 0.8), 2))
+    # Normal transaction amount: log-normal centred around $40k (matches real grant data)
+    amount = max(500.0, round(random.lognormvariate(10.5, 0.5), 2))
 
     tx_date = _random_date()
     tx = {
@@ -49,11 +49,11 @@ def _make_normal_tx(vendors: list[str], categories: list[str]) -> tuple[dict, li
     for _ in range(random.randint(10, 50)):
         h_vid = random.choice(vendors)
         h_cat = random.choice(categories)
-        h_amount = max(500.0, round(random.lognormvariate(9.5, 0.8), 2))
+        h_amount = max(500.0, round(random.lognormvariate(10.5, 0.5), 2))
         h_date = _random_date()
         history.append({"amount": h_amount, "vendor_id": h_vid, "cost_category": h_cat, "tx_date": h_date})
 
-    total_budget = 500_000.0
+    total_budget = random.choice([200_000.0, 500_000.0, 1_000_000.0])
     cat_budget = {c: total_budget / len(categories) for c in categories}
 
     return tx, history, total_budget, cat_budget
@@ -75,10 +75,11 @@ def _make_anomalous_tx(vendors: list[str], categories: list[str]) -> tuple[dict,
     cat_budget = {c: total_budget / len(categories) for c in categories}
 
     if anomaly_type == "giant_amount":
-        amount = random.uniform(200_000, 400_000)
+        # 3-5x the normal mean (~$40k) → $120k-$200k
+        amount = random.uniform(120_000, 250_000)
         tx_date = _random_date()
         tx = {"amount": amount, "vendor_id": vid, "cost_category": cat, "tx_date": tx_date}
-        history = [{"amount": random.lognormvariate(9.5, 0.6), "vendor_id": random.choice(vendors),
+        history = [{"amount": max(500.0, random.lognormvariate(10.5, 0.5)), "vendor_id": random.choice(vendors),
                     "cost_category": random.choice(categories), "tx_date": _random_date()} for _ in range(20)]
 
     elif anomaly_type == "end_of_month_spike":
@@ -86,35 +87,35 @@ def _make_anomalous_tx(vendors: list[str], categories: list[str]) -> tuple[dict,
         import calendar
         last = calendar.monthrange(today.year, today.month)[1]
         tx_date = today.replace(day=max(last - 2, 1))
-        amount = random.uniform(80_000, 150_000)
+        amount = random.uniform(100_000, 200_000)
         tx = {"amount": amount, "vendor_id": vid, "cost_category": cat, "tx_date": tx_date}
-        history = [{"amount": random.lognormvariate(9.5, 0.6), "vendor_id": random.choice(vendors),
+        history = [{"amount": max(500.0, random.lognormvariate(10.5, 0.5)), "vendor_id": random.choice(vendors),
                     "cost_category": random.choice(categories), "tx_date": _random_date(120)} for _ in range(20)]
 
     elif anomaly_type == "dormant_vendor":
         tx_date = date.today()
-        amount = random.uniform(30_000, 80_000)
+        amount = random.uniform(80_000, 150_000)
         tx = {"amount": amount, "vendor_id": vid, "cost_category": cat, "tx_date": tx_date}
-        # History has this vendor 100+ days ago only
-        history = [{"amount": random.lognormvariate(9.5, 0.6), "vendor_id": vid,
+        history = [{"amount": max(500.0, random.lognormvariate(10.5, 0.5)), "vendor_id": vid,
                     "cost_category": cat, "tx_date": date.today() - timedelta(days=random.randint(100, 180))}]
-        history += [{"amount": random.lognormvariate(9.5, 0.6), "vendor_id": random.choice(vendors),
+        history += [{"amount": max(500.0, random.lognormvariate(10.5, 0.5)), "vendor_id": random.choice(vendors),
                      "cost_category": random.choice(categories), "tx_date": _random_date()} for _ in range(15)]
 
     elif anomaly_type == "budget_blow":
-        # Already spent 95% of budget, now adding more
-        amount = random.uniform(10_000, 30_000)
+        # Spent 5-10x over budget (matches 920% burnrate scenario)
+        amount = random.uniform(30_000, 80_000)
         tx_date = _random_date()
         tx = {"amount": amount, "vendor_id": vid, "cost_category": cat, "tx_date": tx_date}
-        # History that totals ~95% of budget
-        history = [{"amount": total_budget * 0.95 / 20, "vendor_id": random.choice(vendors),
+        # History totaling 5-9x the budget
+        multiplier = random.uniform(5.0, 9.0)
+        history = [{"amount": total_budget * multiplier / 20, "vendor_id": random.choice(vendors),
                     "cost_category": random.choice(categories), "tx_date": _random_date()} for _ in range(20)]
 
     else:  # round_amount
-        amount = float(random.choice([10000, 25000, 50000, 100000, 150000, 200000]))
+        amount = float(random.choice([100000, 150000, 200000, 250000, 300000]))
         tx_date = _random_date()
         tx = {"amount": amount, "vendor_id": vid, "cost_category": cat, "tx_date": tx_date}
-        history = [{"amount": random.lognormvariate(9.5, 0.6), "vendor_id": random.choice(vendors),
+        history = [{"amount": max(500.0, random.lognormvariate(10.5, 0.5)), "vendor_id": random.choice(vendors),
                     "cost_category": random.choice(categories), "tx_date": _random_date()} for _ in range(20)]
 
     return tx, history, total_budget, cat_budget
