@@ -240,10 +240,13 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
   const runAnomaly = async () => {
     setAnomalyLoading(true);
     try {
+      const txns = (data as { transactions?: Record<string, unknown>[] })?.transactions ?? [];
+      const latestTx = txns.reduce<Record<string, unknown> | null>((best, t) =>
+        !best || Number(t.amount) > Number(best.amount) ? t : best, null);
       const res = await fetch(`/api/v2/anomaly/detect/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify(latestTx ?? {}),
       });
       setAnomalyResult(await res.json());
     } finally { setAnomalyLoading(false); }

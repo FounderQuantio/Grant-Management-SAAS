@@ -250,11 +250,15 @@ async def detect_anomalies(
         if actions:
             _controls_auto.execute_actions(actions)
 
+    from services.anomaly_detection.processor import _get_detector
+    ml_detector = _get_detector()
+    ml_available = bool(ml_detector and ml_detector.available())
     ml_used = any(a.anomaly_type == "ML_OUTLIER" for a in alerts)
     return {
         "grant_id": str(grant_id),
         "alert_count": len(alerts),
         "detection_method": "ml_isolation_forest+rules_statistical" if ml_used else "rules_statistical",
+        "ml_detector_available": ml_available,
         "alerts": [
             {"alert_id": a.alert_id, "type": a.anomaly_type, "severity": a.severity,
              "score": a.score, "description": a.description, "auto_action": a.auto_action,
