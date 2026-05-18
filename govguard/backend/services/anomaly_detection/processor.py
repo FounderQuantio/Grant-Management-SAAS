@@ -110,9 +110,15 @@ class AnomalyDetectionProcessor:
         alerts += self._detect_end_of_period(grant_id, tenant_id, current_tx, historical_txns, ts_now)
 
         ml_score, ml_available = self._compute_ml_score(current_tx, historical_txns, grant_total_amount, grant_budget)
-        if ml_available and ml_score is not None and ml_score >= self._get_detector_threshold():
-            alerts += self._detect_ml_outlier(grant_id, tenant_id, current_tx, historical_txns,
-                                              grant_total_amount, grant_budget, ts_now, precomputed_score=ml_score)
+        if ml_available and ml_score is not None:
+            detector = _get_detector()
+            rule_alerts_fired = len(alerts) > 0
+            # In confirmation mode: fire at lower threshold when rules already flagged something.
+            # Standalone: only fire at CRITICAL threshold (avoids false positives on clean grants).
+            threshold = detector.THRESHOLD_WARNING if rule_alerts_fired else detector.THRESHOLD_CRITICAL
+            if ml_score >= threshold:
+                alerts += self._detect_ml_outlier(grant_id, tenant_id, current_tx, historical_txns,
+                                                  grant_total_amount, grant_budget, ts_now, precomputed_score=ml_score)
 
         meta = {
             "ml_detector_available": ml_available,

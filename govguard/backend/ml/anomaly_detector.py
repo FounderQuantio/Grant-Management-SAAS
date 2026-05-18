@@ -156,8 +156,10 @@ class AnomalyDetector:
     _model = None
     _load_attempted: bool = False
 
-    THRESHOLD_WARNING  = 0.58
-    THRESHOLD_CRITICAL = 0.75
+    # ML fires only when rules already flagged something (confirmation mode).
+    # Standalone threshold kept higher to avoid false positives on clean grants.
+    THRESHOLD_WARNING  = 0.565   # used when at least one rule alert fired
+    THRESHOLD_CRITICAL = 0.72    # used standalone (no rule support needed)
 
     def __new__(cls) -> "AnomalyDetector":
         if cls._instance is None:
