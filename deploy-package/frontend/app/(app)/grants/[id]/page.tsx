@@ -242,11 +242,17 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
     try {
       const txns = (data as { transactions?: Record<string, unknown>[] })?.transactions ?? [];
       const latestTx = txns.reduce<Record<string, unknown> | null>((best, t) =>
-        !best || Number(t.amount) > Number(best.amount) ? t : best, null);
+        !best || parseFloat(String(t.amount)) > parseFloat(String(best.amount)) ? t : best, null);
+      const txBody = latestTx ? {
+        amount: parseFloat(String(latestTx.amount)),
+        vendor_id: latestTx.vendor_id,
+        cost_category: latestTx.cost_category,
+        tx_date: latestTx.tx_date,
+      } : {};
       const res = await fetch(`/api/v2/anomaly/detect/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(latestTx ?? {}),
+        body: JSON.stringify(txBody),
       });
       setAnomalyResult(await res.json());
     } finally { setAnomalyLoading(false); }

@@ -26,7 +26,7 @@ export async function GET(
   if (!grants[0]) return Response.json({ error: "Not found" }, { status: 404 });
 
   const transactions = await sql`
-    SELECT t.id, t.amount, t.invoice_ref, t.cost_category, t.tx_date,
+    SELECT t.id, t.vendor_id, t.amount, t.invoice_ref, t.cost_category, t.tx_date,
            t.risk_score, t.flag_status, t.flag_reason, t.created_at,
            v.name AS vendor_name
     FROM transactions t
