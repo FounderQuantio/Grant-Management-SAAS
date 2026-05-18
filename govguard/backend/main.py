@@ -127,6 +127,14 @@ def create_app() -> FastAPI:
             result["engine_classifier"] = "available" if (clf2 and clf2.available()) else "unavailable"
         except Exception as e:
             result["engine_classifier"] = f"FAILED: {e}"
+        try:
+            from ml.anomaly_detector import AnomalyDetector, MODEL_PATH as AD_PATH
+            result["anomaly_model_path"] = str(AD_PATH)
+            result["anomaly_model_exists"] = AD_PATH.exists()
+            det = AnomalyDetector()
+            result["anomaly_detector_available"] = det.available()
+        except Exception as e:
+            result["anomaly_detector"] = f"FAILED: {e}"
         return result
 
     PREFIX = "/api/v1"

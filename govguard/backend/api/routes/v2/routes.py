@@ -250,13 +250,15 @@ async def detect_anomalies(
         if actions:
             _controls_auto.execute_actions(actions)
 
+    ml_used = any(a.anomaly_type == "ML_OUTLIER" for a in alerts)
     return {
         "grant_id": str(grant_id),
         "alert_count": len(alerts),
+        "detection_method": "ml_isolation_forest+rules_statistical" if ml_used else "rules_statistical",
         "alerts": [
             {"alert_id": a.alert_id, "type": a.anomaly_type, "severity": a.severity,
              "score": a.score, "description": a.description, "auto_action": a.auto_action,
-             "gao_reference": a.gao_reference}
+             "gao_reference": a.gao_reference, "detection_method": a.detection_method}
             for a in alerts
         ],
         "version": "v2",

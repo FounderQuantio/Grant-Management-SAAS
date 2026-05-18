@@ -16,9 +16,26 @@ from __future__ import annotations
 
 import math
 import statistics
+import structlog
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Optional
+
+log = structlog.get_logger()
+
+_anomaly_detector = None
+
+
+def _get_detector():
+    global _anomaly_detector
+    if _anomaly_detector is None:
+        try:
+            from ml.anomaly_detector import AnomalyDetector
+            _anomaly_detector = AnomalyDetector()
+        except Exception as exc:
+            log.warning("anomaly_detector.import_failed", error=str(exc))
+            _anomaly_detector = False
+    return _anomaly_detector if _anomaly_detector is not False else None
 
 
 @dataclass
@@ -36,16 +53,18 @@ class AnomalyAlert:
     gao_reference: str
     triggered_at: str
     auto_action: str            # NOTIFY / FLAG_REVIEW / HOLD_PAYMENTS
+    detection_method: str = "rules_statistical"  # or "ml_isolation_forest"
 
 
 # ── Anomaly Type Registry ─────────────────────────────────────────────────
 
-ANOMALY_SPEND_VELOCITY    = "SPEND_VELOCITY"      # Cat 1 Ex 3
-ANOMALY_CATEGORY_DRIFT    = "CATEGORY_DRIFT"       # Cat 3 Ex 23
-ANOMALY_VENDOR_DOMINANCE  = "VENDOR_DOMINANCE"     # Cat 1 Ex 26 (collusion)
-ANOMALY_BURNRATE_SPIKE    = "BURNRATE_SPIKE"       # Cat 3 Ex 15 (FEMA grant burnrate)
-ANOMALY_DORMANT_REACTIVATION = "DORMANT_REACTIVATION" # Cat 1 Ex 11
-ANOMALY_END_OF_PERIOD     = "END_OF_PERIOD"        # Cat 1 Ex 10 (DoD dup — fiscal year end)
+ANOMALY_SPEND_VELOCITY       = "SPEND_VELOCITY"       # Cat 1 Ex 3
+ANOMALY_CATEGORY_DRIFT       = "CATEGORY_DRIFT"        # Cat 3 Ex 23
+ANOMALY_VENDOR_DOMINANCE     = "VENDOR_DOMINANCE"      # Cat 1 Ex 26 (collusion)
+ANOMALY_BURNRATE_SPIKE       = "BURNRATE_SPIKE"        # Cat 3 Ex 15 (FEMA grant burnrate)
+ANOMALY_DORMANT_REACTIVATION = "DORMANT_REACTIVATION"  # Cat 1 Ex 11
+ANOMALY_END_OF_PERIOD        = "END_OF_PERIOD"         # Cat 1 Ex 10 (DoD dup — fiscal year end)
+ANOMALY_ML_OUTLIER           = "ML_OUTLIER"            # Phase 3: IsolationForest 20-feature model
 
 
 class AnomalyDetectionProcessor:
@@ -89,6 +108,8 @@ class AnomalyDetectionProcessor:
         alerts += self._detect_burnrate_spike(grant_id, tenant_id, current_tx, historical_txns, grant_total_amount, ts_now)
         alerts += self._detect_dormant_reactivation(grant_id, tenant_id, current_tx, historical_txns, ts_now)
         alerts += self._detect_end_of_period(grant_id, tenant_id, current_tx, historical_txns, ts_now)
+        alerts += self._detect_ml_outlier(grant_id, tenant_id, current_tx, historical_txns,
+                                          grant_total_amount, grant_budget, ts_now)
 
         return alerts
 
@@ -252,6 +273,53 @@ class AnomalyDetectionProcessor:
                         triggered_at=ts, auto_action="NOTIFY",
                     )]
         return []
+
+    def _detect_ml_outlier(
+        self,
+        grant_id: str,
+        tenant_id: str,
+        tx: dict,
+        history: list[dict],
+        grant_total_budget: float,
+        grant_budget_by_category: dict,
+        ts: str,
+    ) -> list:
+        """IsolationForest 20-feature outlier detector (Phase 3)."""
+        import uuid
+        detector = _get_detector()
+        if detector is None or not detector.available():
+            return []
+        try:
+            score = detector.score(tx, history, grant_total_budget, grant_budget_by_category)
+        except Exception as exc:
+            log.warning("anomaly_detector.score_failed", error=str(exc))
+            return []
+
+        if score < detector.THRESHOLD_WARNING:
+            return []
+
+        severity = "CRITICAL" if score >= detector.THRESHOLD_CRITICAL else "WARNING"
+        auto_action = "HOLD_PAYMENTS" if score >= detector.THRESHOLD_CRITICAL else "FLAG_REVIEW"
+
+        return [AnomalyAlert(
+            alert_id=str(uuid.uuid4()),
+            grant_id=grant_id,
+            tenant_id=tenant_id,
+            anomaly_type=ANOMALY_ML_OUTLIER,
+            severity=severity,
+            score=round(score, 4),
+            threshold=detector.THRESHOLD_WARNING,
+            observed_value=score,
+            expected_range=(0.0, detector.THRESHOLD_WARNING),
+            description=(
+                f"IsolationForest anomaly score {score:.2f} — "
+                f"transaction exhibits unusual pattern across 20 behavioral features"
+            ),
+            gao_reference="GAO Cat3-Ex29 (Continuous risk assessment); Cat3-Ex23 (High-risk grant monitoring)",
+            triggered_at=ts,
+            auto_action=auto_action,
+            detection_method="ml_isolation_forest",
+        )]
 
     def _aggregate_weekly(self, history: list[dict]) -> list[float]:
         weeks: dict[int, float] = {}
