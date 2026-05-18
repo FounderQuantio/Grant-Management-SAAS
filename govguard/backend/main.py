@@ -96,6 +96,24 @@ def create_app() -> FastAPI:
     async def health() -> dict:
         return {"status": "ok", "version": "1.0.1"}
 
+    @app.get("/ml-status", include_in_schema=False)
+    async def ml_status() -> dict:
+        result: dict = {}
+        try:
+            import xgboost
+            result["xgboost"] = xgboost.__version__
+        except Exception as e:
+            result["xgboost"] = f"FAILED: {e}"
+        try:
+            from ml.fraud_classifier import FraudClassifier, MODEL_PATH
+            result["model_path"] = str(MODEL_PATH)
+            result["model_exists"] = MODEL_PATH.exists()
+            clf = FraudClassifier()
+            result["classifier_available"] = clf.available()
+        except Exception as e:
+            result["classifier"] = f"FAILED: {e}"
+        return result
+
     PREFIX = "/api/v1"
     app.include_router(auth_router,         prefix=f"{PREFIX}/auth",         tags=["Auth"])
     app.include_router(tenants_router,      prefix=f"{PREFIX}/tenants",      tags=["Tenants"])
