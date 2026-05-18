@@ -97,8 +97,8 @@ class AnomalyDetectionProcessor:
         historical_txns: list[dict],   # last 90d txns for this grant
         grant_budget: dict,            # {category: amount}
         grant_total_amount: float,
-    ) -> list[AnomalyAlert]:
-        """Run all anomaly detectors. Returns list of triggered alerts."""
+    ) -> tuple[list[AnomalyAlert], dict]:
+        """Run all anomaly detectors. Returns (alerts, meta) where meta contains diagnostic info."""
         alerts = []
         ts_now = datetime.utcnow().isoformat()
 
@@ -108,10 +108,18 @@ class AnomalyDetectionProcessor:
         alerts += self._detect_burnrate_spike(grant_id, tenant_id, current_tx, historical_txns, grant_total_amount, ts_now)
         alerts += self._detect_dormant_reactivation(grant_id, tenant_id, current_tx, historical_txns, ts_now)
         alerts += self._detect_end_of_period(grant_id, tenant_id, current_tx, historical_txns, ts_now)
-        alerts += self._detect_ml_outlier(grant_id, tenant_id, current_tx, historical_txns,
-                                          grant_total_amount, grant_budget, ts_now)
 
-        return alerts
+        ml_score, ml_available = self._compute_ml_score(current_tx, historical_txns, grant_total_amount, grant_budget)
+        if ml_available and ml_score is not None and ml_score >= self._get_detector_threshold():
+            alerts += self._detect_ml_outlier(grant_id, tenant_id, current_tx, historical_txns,
+                                              grant_total_amount, grant_budget, ts_now, precomputed_score=ml_score)
+
+        meta = {
+            "ml_detector_available": ml_available,
+            "ml_score": round(ml_score, 4) if ml_score is not None else None,
+            "ml_threshold": self._get_detector_threshold(),
+        }
+        return alerts, meta
 
     def _detect_spend_velocity(self, grant_id, tenant_id, tx, history, ts) -> list:
         """Detect abnormal spend velocity vs. historical weekly average."""
@@ -274,6 +282,28 @@ class AnomalyDetectionProcessor:
                     )]
         return []
 
+    def _get_detector_threshold(self) -> float:
+        detector = _get_detector()
+        return detector.THRESHOLD_WARNING if detector else 0.60
+
+    def _compute_ml_score(
+        self,
+        tx: dict,
+        history: list[dict],
+        grant_total_budget: float,
+        grant_budget_by_category: dict,
+    ) -> tuple[Optional[float], bool]:
+        """Returns (score, available). Score is None if model unavailable or errored."""
+        detector = _get_detector()
+        if detector is None or not detector.available():
+            return None, False
+        try:
+            score = detector.score(tx, history, grant_total_budget, grant_budget_by_category)
+            return score, True
+        except Exception as exc:
+            log.warning("anomaly_detector.score_failed", error=str(exc))
+            return None, True
+
     def _detect_ml_outlier(
         self,
         grant_id: str,
@@ -283,20 +313,12 @@ class AnomalyDetectionProcessor:
         grant_total_budget: float,
         grant_budget_by_category: dict,
         ts: str,
+        precomputed_score: float = 0.0,
     ) -> list:
         """IsolationForest 20-feature outlier detector (Phase 3)."""
         import uuid
         detector = _get_detector()
-        if detector is None or not detector.available():
-            return []
-        try:
-            score = detector.score(tx, history, grant_total_budget, grant_budget_by_category)
-        except Exception as exc:
-            log.warning("anomaly_detector.score_failed", error=str(exc))
-            return []
-
-        if score < detector.THRESHOLD_WARNING:
-            return []
+        score = precomputed_score
 
         severity = "CRITICAL" if score >= detector.THRESHOLD_CRITICAL else "WARNING"
         auto_action = "HOLD_PAYMENTS" if score >= detector.THRESHOLD_CRITICAL else "FLAG_REVIEW"
