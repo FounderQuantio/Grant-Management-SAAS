@@ -112,6 +112,21 @@ def create_app() -> FastAPI:
             result["classifier_available"] = clf.available()
         except Exception as e:
             result["classifier"] = f"FAILED: {e}"
+        try:
+            from ml.fraud_classifier import FraudClassifier
+            import numpy as np
+            clf = FraudClassifier()
+            X = np.zeros((1, 47), dtype=np.float32)
+            prob = float(clf._model.predict_proba(X)[0, 1])
+            result["test_prediction"] = prob
+        except Exception as e:
+            result["test_prediction"] = f"FAILED: {e}"
+        try:
+            from services.fraud_detection.engine import _get_classifier
+            clf2 = _get_classifier()
+            result["engine_classifier"] = "available" if (clf2 and clf2.available()) else "unavailable"
+        except Exception as e:
+            result["engine_classifier"] = f"FAILED: {e}"
         return result
 
     PREFIX = "/api/v1"
