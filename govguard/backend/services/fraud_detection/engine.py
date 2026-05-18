@@ -114,12 +114,14 @@ class FraudAssessment:
     recommended_action: str      # APPROVE / REVIEW / HOLD / BLOCK
     gao_references: list[str]
     explanation: str
+    scoring_method: str = "rules_weighted_sum"  # "ml_xgboost" | "rules_weighted_sum"
 
     def to_dict(self) -> dict:
         return {
             "transaction_id": self.transaction_id,
             "composite_score": self.composite_score,
             "risk_tier": self.risk_tier,
+            "scoring_method": self.scoring_method,
             "triggered_rules": self.triggered_rules,
             "recommended_action": self.recommended_action,
             "gao_references": self.gao_references,
@@ -237,12 +239,15 @@ class FraudDetectionEngine:
             try:
                 prob = clf.predict_proba(signals)
                 composite = round(min(100.0, prob * 100.0), 2)
+                scoring_method = "ml_xgboost"
                 log.debug("fraud_engine.ml_score", composite=composite, tx=transaction_id)
             except Exception as exc:
                 log.warning("fraud_engine.ml_fallback", error=str(exc))
                 composite = min(100.0, round(sum(s.weight * 10 for s in triggered), 2))
+                scoring_method = "rules_weighted_sum"
         else:
             composite = min(100.0, round(sum(s.weight * 10 for s in triggered), 2))
+            scoring_method = "rules_weighted_sum"
 
         tier = self._tier(composite, triggered)
         action = self._action(tier, triggered)
@@ -258,6 +263,7 @@ class FraudDetectionEngine:
             recommended_action=action,
             gao_references=gao_refs,
             explanation=explanation,
+            scoring_method=scoring_method,
         )
 
     # ── Private helpers ──────────────────────────────────────────────────
