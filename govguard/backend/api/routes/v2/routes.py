@@ -257,7 +257,7 @@ async def detect_anomalies(
         "detection_method": "ml_isolation_forest+rules_statistical" if ml_used else "rules_statistical",
         "ml_detector_available": ml_meta["ml_detector_available"],
         "ml_score": ml_meta["ml_score"],
-        "ml_threshold": ml_meta["ml_threshold"],
+        "ml_flagged": ml_meta["ml_flagged"],
         "alerts": [
             {"alert_id": a.alert_id, "type": a.anomaly_type, "severity": a.severity,
              "score": a.score, "description": a.description, "auto_action": a.auto_action,

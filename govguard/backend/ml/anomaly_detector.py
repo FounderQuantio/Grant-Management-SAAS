@@ -149,17 +149,18 @@ def extract_features(
 class AnomalyDetector:
     """
     IsolationForest singleton.
-    score() returns a value in [0, 1] — higher means more anomalous.
-    Scores above THRESHOLD_WARNING / THRESHOLD_CRITICAL trigger alerts.
+
+    Decision boundary comes entirely from the model — the contamination
+    parameter (0.09) tells it to treat the bottom 9% of training scores
+    as anomalous. predict() uses that learned boundary; no manual threshold.
+
+    score() returns a normalised [0,1] value for display only. The actual
+    is_anomaly() decision uses model.predict() == -1, which self-calibrates
+    as the model is retrained on real data (Phase 5).
     """
     _instance: Optional["AnomalyDetector"] = None
     _model = None
     _load_attempted: bool = False
-
-    # ML fires only when rules already flagged something (confirmation mode).
-    # Standalone threshold kept higher to avoid false positives on clean grants.
-    THRESHOLD_WARNING  = 0.565   # used when at least one rule alert fired
-    THRESHOLD_CRITICAL = 0.72    # used standalone (no rule support needed)
 
     def __new__(cls) -> "AnomalyDetector":
         if cls._instance is None:
@@ -170,6 +171,26 @@ class AnomalyDetector:
         self._load()
         return self._model is not None
 
+    def is_anomaly(
+        self,
+        tx: dict,
+        history: list[dict],
+        grant_total_budget: float,
+        grant_budget_by_category: dict,
+    ) -> bool:
+        """
+        Model-driven anomaly decision. Returns True if IsolationForest
+        classifies this transaction as an outlier (-1) based on its
+        learned contamination boundary — no hardcoded threshold.
+        """
+        self._load()
+        if self._model is None:
+            raise RuntimeError("AnomalyDetector model not loaded")
+        import numpy as np
+        feats = extract_features(tx, history, grant_total_budget, grant_budget_by_category)
+        X = np.array(feats, dtype=np.float32).reshape(1, -1)
+        return int(self._model.predict(X)[0]) == -1
+
     def score(
         self,
         tx: dict,
@@ -177,18 +198,19 @@ class AnomalyDetector:
         grant_total_budget: float,
         grant_budget_by_category: dict,
     ) -> float:
-        """Return anomaly probability in [0, 1]. Raises if model unavailable."""
+        """
+        Normalised anomaly score [0, 1] for display purposes.
+        Uses decision_function: more negative raw = more anomalous.
+        Does NOT drive the alert decision — is_anomaly() does.
+        """
         self._load()
         if self._model is None:
             raise RuntimeError("AnomalyDetector model not loaded")
         import numpy as np
         feats = extract_features(tx, history, grant_total_budget, grant_budget_by_category)
         X = np.array(feats, dtype=np.float32).reshape(1, -1)
-        # IsolationForest decision_function: more negative = more anomalous
         raw = float(self._model.decision_function(X)[0])
-        # Normalise to [0,1]: raw typically in [-0.5, 0.5]
-        normalised = max(0.0, min(1.0, 0.5 - raw))
-        return round(normalised, 4)
+        return round(max(0.0, min(1.0, 0.5 - raw)), 4)
 
     def _load(self) -> None:
         if self._load_attempted:

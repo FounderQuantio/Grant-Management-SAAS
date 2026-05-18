@@ -156,7 +156,7 @@ def train() -> None:
         ("scaler", StandardScaler()),
         ("iso", IsolationForest(
             n_estimators=200,
-            contamination=0.09,
+            contamination=0.05,   # flags only most extreme 5% — tighter boundary
             max_features=1.0,
             random_state=42,
             n_jobs=-1,

@@ -109,21 +109,18 @@ class AnomalyDetectionProcessor:
         alerts += self._detect_dormant_reactivation(grant_id, tenant_id, current_tx, historical_txns, ts_now)
         alerts += self._detect_end_of_period(grant_id, tenant_id, current_tx, historical_txns, ts_now)
 
-        ml_score, ml_available = self._compute_ml_score(current_tx, historical_txns, grant_total_amount, grant_budget)
-        if ml_available and ml_score is not None:
-            detector = _get_detector()
-            rule_alerts_fired = len(alerts) > 0
-            # In confirmation mode: fire at lower threshold when rules already flagged something.
-            # Standalone: only fire at CRITICAL threshold (avoids false positives on clean grants).
-            threshold = detector.THRESHOLD_WARNING if rule_alerts_fired else detector.THRESHOLD_CRITICAL
-            if ml_score >= threshold:
-                alerts += self._detect_ml_outlier(grant_id, tenant_id, current_tx, historical_txns,
-                                                  grant_total_amount, grant_budget, ts_now, precomputed_score=ml_score)
+        ml_score, ml_available, ml_flagged = self._compute_ml_score(
+            current_tx, historical_txns, grant_total_amount, grant_budget
+        )
+        if ml_flagged:
+            alerts += self._detect_ml_outlier(grant_id, tenant_id, current_tx, historical_txns,
+                                              grant_total_amount, grant_budget, ts_now,
+                                              precomputed_score=ml_score or 0.0)
 
         meta = {
             "ml_detector_available": ml_available,
-            "ml_score": round(ml_score, 4) if ml_score is not None else None,
-            "ml_threshold": self._get_detector_threshold(),
+            "ml_score": ml_score,
+            "ml_flagged": ml_flagged,
         }
         return alerts, meta
 
@@ -288,9 +285,8 @@ class AnomalyDetectionProcessor:
                     )]
         return []
 
-    def _get_detector_threshold(self) -> float:
-        detector = _get_detector()
-        return detector.THRESHOLD_WARNING if detector else 0.60
+    def _get_detector_threshold(self) -> Optional[float]:
+        return None  # model self-determines boundary via contamination parameter
 
     def _compute_ml_score(
         self,
@@ -298,17 +294,19 @@ class AnomalyDetectionProcessor:
         history: list[dict],
         grant_total_budget: float,
         grant_budget_by_category: dict,
-    ) -> tuple[Optional[float], bool]:
-        """Returns (score, available). Score is None if model unavailable or errored."""
+    ) -> tuple[Optional[float], bool, bool]:
+        """Returns (score, available, is_anomaly).
+        Score is for display; is_anomaly is the model's own decision."""
         detector = _get_detector()
         if detector is None or not detector.available():
-            return None, False
+            return None, False, False
         try:
             score = detector.score(tx, history, grant_total_budget, grant_budget_by_category)
-            return score, True
+            flagged = detector.is_anomaly(tx, history, grant_total_budget, grant_budget_by_category)
+            return score, True, flagged
         except Exception as exc:
             log.warning("anomaly_detector.score_failed", error=str(exc))
-            return None, True
+            return None, True, False
 
     def _detect_ml_outlier(
         self,
