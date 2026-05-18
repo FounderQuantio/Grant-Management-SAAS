@@ -137,6 +137,7 @@ async def assess_fraud(
                 for s in assessment.signals
             ],
             engine_version="v2.0.0",
+            scoring_method=assessment.scoring_method,
         ))
     except Exception as _e:
         import structlog as _slog
@@ -584,6 +585,7 @@ async def bulk_fraud_scan(
                     for s in assessment.signals
                 ],
                 engine_version="v2.0.0",
+                scoring_method=assessment.scoring_method,
             ))
             assessed += 1
         except Exception as e:
