@@ -533,6 +533,7 @@ async def bulk_fraud_scan(
     assessed = 0
     skipped = []
     ml_logs = []  # collected after all raw SQL to avoid autoflush interference
+    scoring_methods_used = []
     for tx_id in tx_ids:
         try:
             tx_result = await db.execute(
@@ -587,6 +588,7 @@ async def bulk_fraud_scan(
                 engine_version="v2.0.0",
                 scoring_method=assessment.scoring_method,
             ))
+            scoring_methods_used.append(assessment.scoring_method)
             assessed += 1
         except Exception as e:
             import structlog as _slog
@@ -614,6 +616,7 @@ async def bulk_fraud_scan(
         "transactions_queued": assessed,
         "skipped": skipped,
         "ml_log_error": ml_log_error,
+        "scoring_methods": scoring_methods_used,
         "message": f"Fraud assessment completed for {assessed} pending transactions",
         "version": "v2",
     }
