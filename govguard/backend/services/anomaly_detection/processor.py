@@ -113,9 +113,11 @@ class AnomalyDetectionProcessor:
             current_tx, historical_txns, grant_total_amount, grant_budget
         )
         if ml_flagged:
+            rule_has_critical = any(a.severity == "CRITICAL" for a in alerts)
             alerts += self._detect_ml_outlier(grant_id, tenant_id, current_tx, historical_txns,
                                               grant_total_amount, grant_budget, ts_now,
-                                              precomputed_score=ml_score or 0.0)
+                                              precomputed_score=ml_score or 0.0,
+                                              inherit_critical=rule_has_critical)
 
         meta = {
             "ml_detector_available": ml_available,
@@ -181,15 +183,18 @@ class AnomalyDetectionProcessor:
         drift = abs(cat_pct - approved_pct)
 
         if drift > self.CATEGORY_DRIFT_PCT and cat_total > cat_approved:
+            # CRITICAL if spending 2x+ the approved category budget
+            is_critical = cat_approved > 0 and cat_total > cat_approved * 2.0
             return [AnomalyAlert(
                 alert_id=str(uuid.uuid4()),
                 grant_id=grant_id, tenant_id=tenant_id,
                 anomaly_type=ANOMALY_CATEGORY_DRIFT,
-                severity="WARNING", score=round(drift * 100, 2), threshold=self.CATEGORY_DRIFT_PCT * 100,
+                severity="CRITICAL" if is_critical else "WARNING",
+                score=round(drift * 100, 2), threshold=self.CATEGORY_DRIFT_PCT * 100,
                 observed_value=cat_pct * 100, expected_range=(0, approved_pct * 100 + self.CATEGORY_DRIFT_PCT * 100),
                 description=f"Category '{cat}' at {cat_pct*100:.1f}% of spend vs {approved_pct*100:.1f}% approved",
                 gao_reference="GAO Cat1-Ex16 (Research Grant Misuse — unallowable costs); 2 CFR 200.405",
-                triggered_at=ts, auto_action="NOTIFY",
+                triggered_at=ts, auto_action="HOLD_PAYMENTS" if is_critical else "NOTIFY",
             )]
         return []
 
@@ -201,15 +206,18 @@ class AnomalyDetectionProcessor:
         vendor_spend = sum(float(t.get("amount", 0)) for t in history if t.get("vendor_id") == vid) + float(tx.get("amount", 0))
         pct = vendor_spend / (total_spend + 0.001)
         if pct > self.VENDOR_DOMINANCE_PCT and total_spend > 50000:
+            # CRITICAL if single vendor holds 85%+ of grant spend (near-monopoly)
+            is_critical = pct > 0.85
             return [AnomalyAlert(
                 alert_id=str(uuid.uuid4()),
                 grant_id=grant_id, tenant_id=tenant_id,
                 anomaly_type=ANOMALY_VENDOR_DOMINANCE,
-                severity="WARNING", score=round(pct * 100, 2), threshold=self.VENDOR_DOMINANCE_PCT * 100,
+                severity="CRITICAL" if is_critical else "WARNING",
+                score=round(pct * 100, 2), threshold=self.VENDOR_DOMINANCE_PCT * 100,
                 observed_value=vendor_spend, expected_range=(0, total_spend * self.VENDOR_DOMINANCE_PCT),
                 description=f"Vendor {vid[:8]}... accounts for {pct*100:.1f}% of grant spend",
                 gao_reference="GAO Cat1-Ex26 (Procurement Collusion — vendor concentration)",
-                triggered_at=ts, auto_action="FLAG_REVIEW",
+                triggered_at=ts, auto_action="HOLD_PAYMENTS" if is_critical else "FLAG_REVIEW",
             )]
         return []
 
@@ -246,16 +254,20 @@ class AnomalyDetectionProcessor:
             return []
         days_since = self._days_ago(last_tx.get("tx_date"))
         if days_since > 60 and float(tx.get("amount", 0)) > 25000:
+            # CRITICAL if dormant 120+ days AND invoice > $75k (stronger ghost-vendor signal)
+            amount = float(tx.get("amount", 0))
+            is_critical = days_since > 120 and amount > 75000
             return [AnomalyAlert(
                 alert_id=str(uuid.uuid4()),
                 grant_id=grant_id, tenant_id=tenant_id,
                 anomaly_type=ANOMALY_DORMANT_REACTIVATION,
-                severity="WARNING", score=days_since, threshold=60,
-                observed_value=float(tx.get("amount", 0)),
+                severity="CRITICAL" if is_critical else "WARNING",
+                score=days_since, threshold=60,
+                observed_value=amount,
                 expected_range=(0, 10000),
-                description=f"Vendor dormant {days_since} days, now submitting ${float(tx.get('amount',0)):,.2f}",
+                description=f"Vendor dormant {days_since} days, now submitting ${amount:,.2f}",
                 gao_reference="GAO Cat1-Ex11 (Ghost Employee analog — dormant reactivation)",
-                triggered_at=ts, auto_action="FLAG_REVIEW",
+                triggered_at=ts, auto_action="HOLD_PAYMENTS" if is_critical else "FLAG_REVIEW",
             )]
         return []
 
@@ -272,16 +284,19 @@ class AnomalyDetectionProcessor:
                     if self._days_ago(t.get("tx_date")) <= 5
                 ) + float(tx.get("amount", 0))
                 if end_period_total > 75000:
+                    # CRITICAL if $200k+ transacted in last 5 days (major fiscal abuse signal)
+                    is_critical = end_period_total > 200000
                     return [AnomalyAlert(
                         alert_id=str(uuid.uuid4()),
                         grant_id=grant_id, tenant_id=tenant_id,
                         anomaly_type=ANOMALY_END_OF_PERIOD,
-                        severity="WARNING", score=round(end_period_total),
+                        severity="CRITICAL" if is_critical else "WARNING",
+                        score=round(end_period_total),
                         threshold=75000, observed_value=end_period_total,
                         expected_range=(0, 75000),
                         description=f"${end_period_total:,.2f} transacted in last 5 days of month",
                         gao_reference="GAO Cat1-Ex10 (DoD duplicate payments — fiscal-year-end surge)",
-                        triggered_at=ts, auto_action="NOTIFY",
+                        triggered_at=ts, auto_action="HOLD_PAYMENTS" if is_critical else "NOTIFY",
                     )]
         return []
 
@@ -318,14 +333,17 @@ class AnomalyDetectionProcessor:
         grant_budget_by_category: dict,
         ts: str,
         precomputed_score: float = 0.0,
+        inherit_critical: bool = False,
     ) -> list:
         """IsolationForest 20-feature outlier detector (Phase 3)."""
         import uuid
         score = precomputed_score
 
-        # Severity based on normalised score: >= 0.65 critical, else warning
-        severity = "CRITICAL" if score >= 0.65 else "WARNING"
-        auto_action = "HOLD_PAYMENTS" if score >= 0.65 else "FLAG_REVIEW"
+        # ML model decides anomaly/normal only — not severity.
+        # Severity is inherited from the rule layer: if any rule fired CRITICAL,
+        # the ML confirmation is also CRITICAL; otherwise WARNING.
+        severity = "CRITICAL" if inherit_critical else "WARNING"
+        auto_action = "HOLD_PAYMENTS" if inherit_critical else "FLAG_REVIEW"
 
         return [AnomalyAlert(
             alert_id=str(uuid.uuid4()),
