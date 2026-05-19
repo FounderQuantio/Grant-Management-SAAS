@@ -16,9 +16,12 @@ GAO Alignment:
 """
 from __future__ import annotations
 import math
+import structlog
 from dataclasses import dataclass
 from datetime import date
 from typing import Optional
+
+log = structlog.get_logger()
 
 
 @dataclass
@@ -32,6 +35,7 @@ class RiskPrediction:
     confidence: float                # 0.0–1.0
     gao_high_risk_overlap: list[str] # Matching GAO High-Risk programs
     prediction_horizon_days: int = 30
+    prediction_method: str = "linear_weighted"
 
 
 class PredictiveRiskScorer:
@@ -71,23 +75,52 @@ class PredictiveRiskScorer:
     ) -> RiskPrediction:
         """Compute predictive risk score with trend analysis."""
 
-        # 1. Compliance trajectory
+        # 1. GAO High-Risk overlap (needed for both ML and linear paths)
+        gao_overlaps = []
+        agency_lower = agency.lower()
+        cfda_lower = (program_cfda or "").lower()
+        for keyword, label in self.GAO_HIGH_RISK_INDICATORS.items():
+            if keyword in agency_lower or keyword in cfda_lower:
+                gao_overlaps.append(label)
+
+        # 2. Try XGBoost model first
+        prediction_method = "linear_weighted"
+        ml_predicted: Optional[float] = None
+        try:
+            from ml.risk_forecaster import RiskForecaster, extract_features as _rf_extract
+            forecaster = RiskForecaster()
+            if forecaster.available():
+                burnrate = spend_pct_history[-1] if spend_pct_history else 0.2
+                features = _rf_extract(
+                    compliance_score_history=compliance_score_history,
+                    spend_pct_history=spend_pct_history,
+                    open_findings_count=open_findings_count,
+                    open_cap_count=open_cap_count,
+                    overdue_cap_count=overdue_cap_count,
+                    days_to_period_end=days_to_period_end,
+                    vendor_network_risk=vendor_network_risk,
+                    gao_overlap_count=len(gao_overlaps),
+                    burnrate_pct=burnrate,
+                )
+                ml_predicted = forecaster.predict(features)
+                prediction_method = "ml_xgboost"
+        except Exception as exc:
+            log.warning("risk_scorer.ml_fallback", error=str(exc))
+
+        # 3. Linear components (always computed — used for current_score, drivers, trend)
         compliance_trend, compliance_delta = self._trend(compliance_score_history)
         projected_compliance = max(0, (compliance_score_history[-1] if compliance_score_history else 70) + compliance_delta)
 
-        # 2. Burn-rate trajectory
         burnrate_trend, burnrate_delta = self._trend(spend_pct_history)
         projected_burnrate = min(1.0, (spend_pct_history[-1] if spend_pct_history else 0.3) + burnrate_delta)
 
-        # 3. Component risk scores
-        compliance_risk     = max(0.0, 100.0 - projected_compliance)
-        burnrate_risk       = min(100.0, projected_burnrate * 120)
-        findings_risk       = min(100.0, open_findings_count * 15 + overdue_cap_count * 25)
-        network_risk        = vendor_network_risk
-        period_end_risk     = max(0.0, (30 - days_to_period_end) * 2) if days_to_period_end <= 30 else 0.0
+        compliance_risk = max(0.0, 100.0 - projected_compliance)
+        burnrate_risk   = min(100.0, projected_burnrate * 120)
+        findings_risk   = min(100.0, open_findings_count * 15 + overdue_cap_count * 25)
+        network_risk    = vendor_network_risk
+        period_end_risk = max(0.0, (30 - days_to_period_end) * 2) if days_to_period_end <= 30 else 0.0
 
-        # 4. Weighted composite
-        predicted = (
+        linear_predicted = (
             compliance_risk  * 0.30 +
             findings_risk    * 0.25 +
             network_risk     * 0.20 +
@@ -96,7 +129,9 @@ class PredictiveRiskScorer:
         )
         current = compliance_risk * 0.40 + findings_risk * 0.35 + network_risk * 0.25
 
-        # 5. Trend direction
+        predicted = ml_predicted if ml_predicted is not None else linear_predicted
+
+        # 4. Trend direction (ML score vs linear current baseline)
         if predicted - current > 5:
             trend = "DETERIORATING"
         elif current - predicted > 5:
@@ -104,7 +139,7 @@ class PredictiveRiskScorer:
         else:
             trend = "STABLE"
 
-        # 6. Risk drivers
+        # 5. Risk drivers
         drivers = []
         if compliance_risk > 40: drivers.append({"factor": "low_compliance_score", "contribution": round(compliance_risk * 0.30, 1), "value": projected_compliance})
         if findings_risk > 30: drivers.append({"factor": "open_findings", "contribution": round(findings_risk * 0.25, 1), "value": open_findings_count})
@@ -112,15 +147,7 @@ class PredictiveRiskScorer:
         if burnrate_risk > 40: drivers.append({"factor": "abnormal_burnrate", "contribution": round(burnrate_risk * 0.15, 1), "value": projected_burnrate})
         if period_end_risk > 20: drivers.append({"factor": "period_end_pressure", "contribution": round(period_end_risk * 0.10, 1), "value": days_to_period_end})
 
-        # 7. GAO High-Risk overlap
-        gao_overlaps = []
-        agency_lower = agency.lower()
-        cfda_lower = (program_cfda or "").lower()
-        for keyword, label in self.GAO_HIGH_RISK_INDICATORS.items():
-            if keyword in agency_lower or keyword in cfda_lower:
-                gao_overlaps.append(label)
-
-        # 8. Recommendations
+        # 6. Recommendations
         actions = []
         if compliance_trend == "DETERIORATING": actions.append("Accelerate compliance control testing — run POST /compliance/run immediately")
         if overdue_cap_count > 0: actions.append(f"Close {overdue_cap_count} overdue CAP(s) before period end")
@@ -139,6 +166,7 @@ class PredictiveRiskScorer:
             recommended_actions=actions,
             confidence=round(confidence, 2),
             gao_high_risk_overlap=gao_overlaps,
+            prediction_method=prediction_method,
         )
 
     def _trend(self, series: list[float]) -> tuple[str, float]:

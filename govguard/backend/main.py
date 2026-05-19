@@ -135,6 +135,14 @@ def create_app() -> FastAPI:
             result["anomaly_detector_available"] = det.available()
         except Exception as e:
             result["anomaly_detector"] = f"FAILED: {e}"
+        try:
+            from ml.risk_forecaster import RiskForecaster, MODEL_PATH as RF_PATH
+            result["risk_forecaster_model_path"] = str(RF_PATH)
+            result["risk_forecaster_model_exists"] = RF_PATH.exists()
+            rf = RiskForecaster()
+            result["risk_forecaster_available"] = rf.available()
+        except Exception as e:
+            result["risk_forecaster"] = f"FAILED: {e}"
         return result
 
     PREFIX = "/api/v1"

@@ -504,6 +504,7 @@ async def predict_grant_risk(
         "current_risk_score": prediction.current_risk_score,
         "trend": prediction.trend,
         "confidence": prediction.confidence,
+        "prediction_method": prediction.prediction_method,
         "risk_drivers": prediction.risk_drivers,
         "recommended_actions": prediction.recommended_actions,
         "gao_high_risk_overlap": prediction.gao_high_risk_overlap,
