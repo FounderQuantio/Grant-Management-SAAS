@@ -480,10 +480,45 @@ async def predict_grant_risk(
         from datetime import date
         days_to_end = max(0, (grant.period_end - date.today()).days)
 
-    # Synthetic compliance score history (last 6 months from compliance_controls)
+    # Real monthly spend history (last 6 months)
+    monthly_spend_result = await db.execute(
+        text("""
+            SELECT
+                DATE_TRUNC('month', tx_date)::date AS month,
+                SUM(amount) AS monthly_spend
+            FROM transactions
+            WHERE grant_id = :gid AND tenant_id = :tid
+              AND tx_date >= CURRENT_DATE - INTERVAL '6 months'
+            GROUP BY 1
+            ORDER BY 1 ASC
+        """),
+        {"gid": str(grant_id), "tid": str(user.tenant_id)},
+    )
+    total_amount = float(grant.total_amount) if grant.total_amount else 1.0
+    monthly_rows = monthly_spend_result.mappings().all()
+    spend_history = (
+        [min(1.0, float(r["monthly_spend"]) / total_amount) for r in monthly_rows]
+        if monthly_rows else [0.2]
+    )
+
+    # Compliance history — current score held flat across months until a
+    # time-series compliance log table is added in Phase 5
     compliance_score = float(grant.compliance_score or 70)
-    compliance_history = [max(0, compliance_score + (i - 3) * 2) for i in range(6)]
-    spend_history = [0.1, 0.15, 0.18, 0.22, 0.28, 0.35]
+    compliance_history = [compliance_score] * max(1, len(spend_history))
+
+    # Vendor network risk — average mapped score of vendors active on this grant
+    vendor_tier_result = await db.execute(
+        text("""
+            SELECT DISTINCT v.risk_tier
+            FROM vendors v
+            INNER JOIN transactions t ON t.vendor_id = v.id
+            WHERE t.grant_id = :gid AND t.tenant_id = :tid
+        """),
+        {"gid": str(grant_id), "tid": str(user.tenant_id)},
+    )
+    _tier_map = {"low": 20.0, "medium": 50.0, "high": 80.0, "critical": 95.0}
+    tiers = [_tier_map.get(r["risk_tier"], 30.0) for r in vendor_tier_result.mappings()]
+    vendor_network_risk = round(sum(tiers) / len(tiers), 1) if tiers else 0.0
 
     prediction = _risk_scorer.predict(
         grant_id=str(grant_id),
@@ -491,7 +526,7 @@ async def predict_grant_risk(
         program_cfda=grant.program_cfda,
         compliance_score_history=compliance_history,
         spend_pct_history=spend_history,
-        vendor_network_risk=0.0,
+        vendor_network_risk=vendor_network_risk,
         open_findings_count=open_findings,
         open_cap_count=open_caps,
         overdue_cap_count=overdue_caps,
