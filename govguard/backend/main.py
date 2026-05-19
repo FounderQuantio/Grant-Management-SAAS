@@ -143,6 +143,12 @@ def create_app() -> FastAPI:
             result["risk_forecaster_available"] = rf.available()
         except Exception as e:
             result["risk_forecaster"] = f"FAILED: {e}"
+        try:
+            from ml.drift_monitor import PSI_WARNING, PSI_CRITICAL
+            result["drift_monitor"] = "available"
+            result["drift_psi_thresholds"] = {"warning": PSI_WARNING, "critical": PSI_CRITICAL}
+        except Exception as e:
+            result["drift_monitor"] = f"FAILED: {e}"
         return result
 
     PREFIX = "/api/v1"

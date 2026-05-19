@@ -147,6 +147,7 @@ async def assess_fraud(
 
     return {
         "assessment": assessment.to_dict(),
+        "shadow_comparison": assessment.shadow_comparison,
         "auto_actions_triggered": [a.action_type for a in actions],
         "version": "v2",
     }
@@ -549,7 +550,165 @@ async def predict_grant_risk(
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# 6. BULK FRAUD SCAN (batch endpoint)
+# 6. PHASE 5 — FEEDBACK LOOP
+# ────────────────────────────────────────────────────────────────────────────
+
+@router.get("/fraud/drift-report")
+async def fraud_drift_report(
+    baseline_days: int = Query(default=30, ge=7, le=365),
+    recent_days:   int = Query(default=7,  ge=1, le=30),
+    user: UserContext = Depends(get_current_user_or_service),
+    db:   AsyncSession = Depends(get_db),
+):
+    """
+    PSI-based drift report comparing baseline vs recent fraud score distributions.
+    baseline_days: how far back to look for baseline (default 30 days)
+    recent_days:   how many recent days to treat as current window (default 7)
+    """
+    from ml.drift_monitor import check_drift
+
+    baseline_result = await db.execute(
+        text("""
+            SELECT CAST(composite_score AS FLOAT) AS score
+            FROM fraud_assessments
+            WHERE tenant_id = :tid
+              AND created_at < NOW() - INTERVAL '1 day' * :recent_days
+              AND created_at >= NOW() - INTERVAL '1 day' * :baseline_days
+            ORDER BY created_at
+        """),
+        {"tid": str(user.tenant_id), "recent_days": recent_days, "baseline_days": baseline_days},
+    )
+    recent_result = await db.execute(
+        text("""
+            SELECT CAST(composite_score AS FLOAT) AS score
+            FROM fraud_assessments
+            WHERE tenant_id = :tid
+              AND created_at >= NOW() - INTERVAL '1 day' * :recent_days
+            ORDER BY created_at
+        """),
+        {"tid": str(user.tenant_id), "recent_days": recent_days},
+    )
+
+    baseline_scores = [float(r["score"]) for r in baseline_result.mappings()]
+    recent_scores   = [float(r["score"]) for r in recent_result.mappings()]
+
+    report = check_drift(baseline_scores, recent_scores)
+    return {**report, "baseline_window_days": baseline_days, "recent_window_days": recent_days, "version": "v2"}
+
+
+@router.get("/fraud/shadow-stats")
+async def fraud_shadow_stats(
+    days: int = Query(default=30, ge=1, le=365),
+    user: UserContext = Depends(get_current_user_or_service),
+    db:   AsyncSession = Depends(get_db),
+):
+    """
+    Compare ML vs rules-only scores for recent assessments.
+    Computes rules score on-the-fly from stored signal_detail — no schema change needed.
+    Shows agreement rate, average delta, and directional bias.
+    """
+    result = await db.execute(
+        text("""
+            SELECT CAST(composite_score AS FLOAT) AS ml_score, signal_detail
+            FROM fraud_assessments
+            WHERE tenant_id = :tid
+              AND scoring_method = 'ml_xgboost'
+              AND created_at >= NOW() - INTERVAL '1 day' * :days
+            ORDER BY created_at DESC
+            LIMIT 500
+        """),
+        {"tid": str(user.tenant_id), "days": days},
+    )
+    rows = result.mappings().all()
+
+    if not rows:
+        return {"status": "no_ml_assessments", "days": days, "version": "v2"}
+
+    def _tier(score: float) -> str:
+        if score >= 70: return "CRITICAL"
+        if score >= 50: return "HIGH"
+        if score >= 25: return "MEDIUM"
+        return "LOW"
+
+    def _action(tier: str) -> str:
+        return {"CRITICAL": "BLOCK", "HIGH": "HOLD", "MEDIUM": "REVIEW", "LOW": "APPROVE"}[tier]
+
+    comparisons = []
+    for row in rows:
+        ml_score = float(row["ml_score"])
+        detail   = row["signal_detail"] or []
+        rules_score = min(100.0, sum(
+            float(s.get("weight", 0)) * 10
+            for s in detail if s.get("triggered", False)
+        ))
+        ml_act    = _action(_tier(ml_score))
+        rules_act = _action(_tier(rules_score))
+        comparisons.append({
+            "ml_score":    round(ml_score, 2),
+            "rules_score": round(rules_score, 2),
+            "ml_action":   ml_act,
+            "rules_action":rules_act,
+            "agreement":   ml_act == rules_act,
+            "delta":       round(ml_score - rules_score, 2),
+        })
+
+    n = len(comparisons)
+    agreement_rate      = round(sum(1 for c in comparisons if c["agreement"]) / n, 3)
+    avg_delta           = round(sum(c["delta"] for c in comparisons) / n, 2)
+    ml_more_aggressive  = round(sum(1 for c in comparisons if c["delta"] > 5) / n, 3)
+    ml_more_lenient     = round(sum(1 for c in comparisons if c["delta"] < -5) / n, 3)
+
+    return {
+        "assessments_analyzed": n,
+        "agreement_rate":        agreement_rate,
+        "avg_score_delta":       avg_delta,
+        "ml_more_aggressive_rate": ml_more_aggressive,
+        "ml_more_lenient_rate":    ml_more_lenient,
+        "summary": (
+            "ML and rules agree" if agreement_rate >= 0.85
+            else "ML more aggressive than rules" if avg_delta > 5
+            else "ML more lenient than rules" if avg_delta < -5
+            else "Moderate disagreement — review samples"
+        ),
+        "samples": comparisons[:10],
+        "days": days,
+        "version": "v2",
+    }
+
+
+@router.post("/fraud/retrain")
+async def retrain_fraud_classifier(
+    user: UserContext = Depends(get_current_user_or_service),
+    db:   AsyncSession = Depends(get_db),
+):
+    """
+    Retrain the fraud classifier on confirmed labels from fraud_assessments.
+    Auto-promotes new model to production if precision AND recall >= 0.70.
+    Requires at least 20 confirmed labels (Fraud / Clean clicks in the UI).
+    """
+    from ml.training.retrain_fraud_classifier import retrain
+
+    result = await db.execute(
+        text("""
+            SELECT signal_detail, confirmed_label
+            FROM fraud_assessments
+            WHERE tenant_id = :tid
+              AND confirmed_label IS NOT NULL
+            ORDER BY confirmed_at DESC
+        """),
+        {"tid": str(user.tenant_id)},
+    )
+    labeled_rows = [
+        {"signal_detail": r["signal_detail"] or [], "confirmed_label": bool(r["confirmed_label"])}
+        for r in result.mappings().all()
+    ]
+
+    report = retrain(labeled_rows)
+    return {**report, "version": "v2"}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# 7. BULK FRAUD SCAN (batch endpoint)
 # ────────────────────────────────────────────────────────────────────────────
 
 @router.post("/fraud/bulk-scan/{grant_id}")

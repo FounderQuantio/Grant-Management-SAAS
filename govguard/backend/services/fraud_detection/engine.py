@@ -116,6 +116,7 @@ class FraudAssessment:
     gao_references: list[str]
     explanation: str
     scoring_method: str = "rules_weighted_sum"  # "ml_xgboost" | "rules_weighted_sum"
+    shadow_comparison: Optional[dict] = None    # populated when ml_xgboost is active
 
     def to_dict(self) -> dict:
         return {
@@ -234,8 +235,12 @@ class FraudDetectionEngine:
 
         triggered = [s for s in signals if s.triggered]
 
+        # Rules-only score always computed — used as fallback and shadow baseline
+        rules_composite = min(100.0, round(sum(s.weight * 10 for s in triggered), 2))
+
         # Phase 2: use trained XGBoost model if available; fall back to weighted sum
         clf = _get_classifier()
+        shadow_comparison: Optional[dict] = None
         if clf and clf.available():
             try:
                 prob = clf.predict_proba(signals)
@@ -244,16 +249,29 @@ class FraudDetectionEngine:
                 log.debug("fraud_engine.ml_score", composite=composite, tx=transaction_id)
             except Exception as exc:
                 log.warning("fraud_engine.ml_fallback", error=str(exc))
-                composite = min(100.0, round(sum(s.weight * 10 for s in triggered), 2))
+                composite = rules_composite
                 scoring_method = "rules_weighted_sum"
         else:
-            composite = min(100.0, round(sum(s.weight * 10 for s in triggered), 2))
+            composite = rules_composite
             scoring_method = "rules_weighted_sum"
 
         tier = self._tier(composite, triggered)
         action = self._action(tier, triggered)
         gao_refs = self._gao_refs(triggered)
         explanation = self._explain(triggered, composite)
+
+        # Shadow comparison: only when ML is active
+        if scoring_method == "ml_xgboost":
+            rules_tier   = self._tier(rules_composite, triggered)
+            rules_action = self._action(rules_tier, triggered)
+            shadow_comparison = {
+                "rules_score":  rules_composite,
+                "ml_score":     composite,
+                "rules_action": rules_action,
+                "ml_action":    action,
+                "agreement":    rules_action == action,
+                "delta":        round(composite - rules_composite, 2),
+            }
 
         return FraudAssessment(
             transaction_id=transaction_id,
@@ -265,6 +283,7 @@ class FraudDetectionEngine:
             gao_references=gao_refs,
             explanation=explanation,
             scoring_method=scoring_method,
+            shadow_comparison=shadow_comparison,
         )
 
     # ── Private helpers ──────────────────────────────────────────────────
