@@ -83,31 +83,7 @@ class PredictiveRiskScorer:
             if keyword in agency_lower or keyword in cfda_lower:
                 gao_overlaps.append(label)
 
-        # 2. Try XGBoost model first
-        prediction_method = "linear_weighted"
-        ml_predicted: Optional[float] = None
-        try:
-            from ml.risk_forecaster import RiskForecaster, extract_features as _rf_extract
-            forecaster = RiskForecaster()
-            if forecaster.available():
-                burnrate = spend_pct_history[-1] if spend_pct_history else 0.2
-                features = _rf_extract(
-                    compliance_score_history=compliance_score_history,
-                    spend_pct_history=spend_pct_history,
-                    open_findings_count=open_findings_count,
-                    open_cap_count=open_cap_count,
-                    overdue_cap_count=overdue_cap_count,
-                    days_to_period_end=days_to_period_end,
-                    vendor_network_risk=vendor_network_risk,
-                    gao_overlap_count=len(gao_overlaps),
-                    burnrate_pct=burnrate,
-                )
-                ml_predicted = forecaster.predict(features)
-                prediction_method = "ml_xgboost"
-        except Exception as exc:
-            log.warning("risk_scorer.ml_fallback", error=str(exc))
-
-        # 3. Linear components (always computed — used for current_score, drivers, trend)
+        # 2. Linear components — always computed (current_score, recommendations, fallback)
         compliance_trend, compliance_delta = self._trend(compliance_score_history)
         projected_compliance = max(0, (compliance_score_history[-1] if compliance_score_history else 70) + compliance_delta)
 
@@ -129,25 +105,53 @@ class PredictiveRiskScorer:
         )
         current = compliance_risk * 0.40 + findings_risk * 0.35 + network_risk * 0.25
 
-        predicted = ml_predicted if ml_predicted is not None else linear_predicted
-
-        # 4. Trend direction (ML score vs linear current baseline)
-        if predicted - current > 5:
+        # 3. Trend from data slopes — not from score comparison
+        # compliance "IMPROVING" = score going up = risk reducing
+        # burnrate "IMPROVING"   = spend going up = risk increasing
+        risk_worsening = compliance_trend == "DETERIORATING" or burnrate_trend == "IMPROVING"
+        risk_improving = compliance_trend == "IMPROVING" and burnrate_trend != "IMPROVING"
+        if risk_worsening:
             trend = "DETERIORATING"
-        elif current - predicted > 5:
+        elif risk_improving:
             trend = "IMPROVING"
         else:
             trend = "STABLE"
 
-        # 5. Risk drivers
-        drivers = []
-        if compliance_risk > 40: drivers.append({"factor": "low_compliance_score", "contribution": round(compliance_risk * 0.30, 1), "value": projected_compliance})
-        if findings_risk > 30: drivers.append({"factor": "open_findings", "contribution": round(findings_risk * 0.25, 1), "value": open_findings_count})
-        if network_risk > 30: drivers.append({"factor": "vendor_network_risk", "contribution": round(network_risk * 0.20, 1), "value": vendor_network_risk})
-        if burnrate_risk > 40: drivers.append({"factor": "abnormal_burnrate", "contribution": round(burnrate_risk * 0.15, 1), "value": projected_burnrate})
-        if period_end_risk > 20: drivers.append({"factor": "period_end_pressure", "contribution": round(period_end_risk * 0.10, 1), "value": days_to_period_end})
+        # 4. Try XGBoost model — replaces predicted score and drivers
+        prediction_method = "linear_weighted"
+        predicted = linear_predicted
+        drivers: list[dict] = []
+        try:
+            from ml.risk_forecaster import RiskForecaster, extract_features as _rf_extract
+            forecaster = RiskForecaster()
+            if forecaster.available():
+                burnrate = spend_pct_history[-1] if spend_pct_history else 0.2
+                features = _rf_extract(
+                    compliance_score_history=compliance_score_history,
+                    spend_pct_history=spend_pct_history,
+                    open_findings_count=open_findings_count,
+                    open_cap_count=open_cap_count,
+                    overdue_cap_count=overdue_cap_count,
+                    days_to_period_end=days_to_period_end,
+                    vendor_network_risk=vendor_network_risk,
+                    gao_overlap_count=len(gao_overlaps),
+                    burnrate_pct=burnrate,
+                )
+                predicted, drivers = forecaster.predict_with_drivers(features)
+                prediction_method = "ml_xgboost"
+        except Exception as exc:
+            log.warning("risk_scorer.ml_fallback", error=str(exc))
 
-        # 6. Recommendations
+        # Linear drivers as fallback when ML unavailable
+        if not drivers:
+            if compliance_risk > 40: drivers.append({"factor": "low_compliance_score", "contribution": round(compliance_risk * 0.30, 1), "direction": "increasing_risk"})
+            if findings_risk > 30:   drivers.append({"factor": "open_findings",        "contribution": round(findings_risk * 0.25, 1),  "direction": "increasing_risk"})
+            if network_risk > 30:    drivers.append({"factor": "vendor_network_risk",   "contribution": round(network_risk * 0.20, 1),   "direction": "increasing_risk"})
+            if burnrate_risk > 40:   drivers.append({"factor": "abnormal_burnrate",     "contribution": round(burnrate_risk * 0.15, 1),  "direction": "increasing_risk"})
+            if period_end_risk > 20: drivers.append({"factor": "period_end_pressure",   "contribution": round(period_end_risk * 0.10, 1),"direction": "increasing_risk"})
+            drivers.sort(key=lambda x: x.get("contribution", 0), reverse=True)
+
+        # 5. Recommendations
         actions = []
         if compliance_trend == "DETERIORATING": actions.append("Accelerate compliance control testing — run POST /compliance/run immediately")
         if overdue_cap_count > 0: actions.append(f"Close {overdue_cap_count} overdue CAP(s) before period end")
@@ -162,7 +166,7 @@ class PredictiveRiskScorer:
             predicted_risk_score=round(min(100.0, predicted), 2),
             current_risk_score=round(min(100.0, current), 2),
             trend=trend,
-            risk_drivers=sorted(drivers, key=lambda x: x.get("contribution", 0), reverse=True),
+            risk_drivers=drivers,
             recommended_actions=actions,
             confidence=round(confidence, 2),
             gao_high_risk_overlap=gao_overlaps,

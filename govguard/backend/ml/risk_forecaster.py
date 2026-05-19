@@ -125,6 +125,40 @@ class RiskForecaster:
         score = float(self._model.predict(X)[0])
         return round(max(0.0, min(100.0, score)), 2)
 
+    def predict_with_drivers(
+        self, features: list[float]
+    ) -> tuple[float, list[dict]]:
+        """Return (risk_score, drivers) where drivers are SHAP contributions.
+
+        Each driver: {"factor": str, "contribution": float, "direction": str}
+        Positive contribution = pushes score toward more risk.
+        Sorted by absolute contribution descending, top 6 returned.
+        """
+        self._load()
+        if self._model is None:
+            raise RuntimeError("RiskForecaster model not loaded")
+        import numpy as np
+        import xgboost as xgb
+
+        X = np.array(features, dtype=np.float32).reshape(1, -1)
+        score = round(max(0.0, min(100.0, float(self._model.predict(X)[0]))), 2)
+
+        dmat = xgb.DMatrix(X)
+        # shape (1, n_features + 1) — last column is the base score bias
+        contribs = self._model.get_booster().predict(dmat, pred_contribs=True)[0]
+
+        drivers = []
+        for name, contrib in zip(FEATURE_NAMES, contribs[:-1]):
+            c = float(contrib)
+            if abs(c) >= 0.5:
+                drivers.append({
+                    "factor": name,
+                    "contribution": round(c, 2),
+                    "direction": "increasing_risk" if c > 0 else "reducing_risk",
+                })
+        drivers.sort(key=lambda d: abs(d["contribution"]), reverse=True)
+        return score, drivers[:6]
+
     def _load(self) -> None:
         if self._load_attempted:
             return
