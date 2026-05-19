@@ -321,11 +321,11 @@ class AnomalyDetectionProcessor:
     ) -> list:
         """IsolationForest 20-feature outlier detector (Phase 3)."""
         import uuid
-        detector = _get_detector()
         score = precomputed_score
 
-        severity = "CRITICAL" if score >= detector.THRESHOLD_CRITICAL else "WARNING"
-        auto_action = "HOLD_PAYMENTS" if score >= detector.THRESHOLD_CRITICAL else "FLAG_REVIEW"
+        # Severity based on normalised score: >= 0.65 critical, else warning
+        severity = "CRITICAL" if score >= 0.65 else "WARNING"
+        auto_action = "HOLD_PAYMENTS" if score >= 0.65 else "FLAG_REVIEW"
 
         return [AnomalyAlert(
             alert_id=str(uuid.uuid4()),
@@ -334,9 +334,9 @@ class AnomalyDetectionProcessor:
             anomaly_type=ANOMALY_ML_OUTLIER,
             severity=severity,
             score=round(score, 4),
-            threshold=detector.THRESHOLD_WARNING,
+            threshold=0.0,
             observed_value=score,
-            expected_range=(0.0, detector.THRESHOLD_WARNING),
+            expected_range=(0.0, 1.0),
             description=(
                 f"IsolationForest anomaly score {score:.2f} — "
                 f"transaction exhibits unusual pattern across 20 behavioral features"
