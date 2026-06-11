@@ -7,7 +7,8 @@ export function getAuth0Client(): Auth0Client {
   return _auth0;
 }
 export const auth0 = {
-  getSession: (req?: NextRequest) => getAuth0Client().getSession(req as never),
+  getSession: (req?: NextRequest) =>
+    req ? getAuth0Client().getSession(req) : getAuth0Client().getSession(),
   middleware: (req: NextRequest) => getAuth0Client().middleware(req),
 };
 
