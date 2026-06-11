@@ -19,7 +19,7 @@ async function proxy(request: NextRequest, { params }: { params: { path: string[
 
   const path = params.path.join("/");
   const search = request.nextUrl.search;
-  const upstreamUrl = `${RAILWAY_URL}/api/v1/${path}${search}`;
+  const upstreamUrl = `${RAILWAY_URL}/api/v2/${path}${search}`;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
