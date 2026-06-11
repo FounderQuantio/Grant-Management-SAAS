@@ -4,7 +4,9 @@
  * Handles auth headers, 401 refresh, and typed responses.
  */
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// API calls go through the Next.js proxy (/api/v1/...) which adds auth headers
+// before forwarding to Railway. NEXT_PUBLIC_API_URL is only used server-side.
+const BASE_URL = "";
 
 export class APIError extends Error {
   constructor(
