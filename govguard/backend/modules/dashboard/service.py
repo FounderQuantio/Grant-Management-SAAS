@@ -29,7 +29,7 @@ class DashboardService:
             text("""
                 SELECT AVG(compliance_score)
                 FROM grants
-                WHERE tenant_id = :tid AND status = 'active' AND compliance_score IS NOT NULL
+                WHERE tenant_id = :tid AND status != 'closed' AND compliance_score IS NOT NULL
             """),
             {"tid": str(tenant_id)},
         )
@@ -71,7 +71,7 @@ class DashboardService:
             text("""
                 SELECT id, award_number, agency, compliance_score
                 FROM grants
-                WHERE tenant_id = :tid AND status = 'active'
+                WHERE tenant_id = :tid AND status != 'closed'
                 ORDER BY compliance_score ASC NULLS LAST
                 LIMIT 10
             """),

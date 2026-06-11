@@ -93,12 +93,13 @@ async def list_grants(
     }
 
 
-@router.get("/{grant_id}", response_model=GrantResponse)
+@router.get("/{grant_id}")
 async def get_grant(
     grant_id: UUID,
     user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    from sqlalchemy import text as _text
     await set_tenant(db, str(user.tenant_id))
     result = await db.execute(
         select(Grant).where(and_(Grant.id == grant_id, Grant.tenant_id == user.tenant_id))
@@ -106,7 +107,44 @@ async def get_grant(
     grant = result.scalar_one_or_none()
     if not grant:
         raise GrantNotFound()
-    return GrantResponse.model_validate(grant)
+
+    # Fetch transactions with vendor name
+    tx_result = await db.execute(
+        _text("""
+            SELECT t.id, t.invoice_ref, t.cost_category, t.tx_date, t.amount,
+                   t.risk_score, t.flag_status, v.name AS vendor_name, t.vendor_id
+            FROM transactions t
+            LEFT JOIN vendors v ON v.id = t.vendor_id
+            WHERE t.grant_id = :gid AND t.tenant_id = :tid
+            ORDER BY t.tx_date DESC
+            LIMIT 200
+        """),
+        {"gid": str(grant_id), "tid": str(user.tenant_id)},
+    )
+    transactions = [
+        {
+            "id": str(row.id),
+            "invoice_ref": row.invoice_ref,
+            "cost_category": row.cost_category,
+            "tx_date": row.tx_date.isoformat() if row.tx_date else None,
+            "amount": float(row.amount),
+            "risk_score": float(row.risk_score) if row.risk_score is not None else None,
+            "flag_status": row.flag_status,
+            "vendor_name": row.vendor_name,
+            "vendor_id": str(row.vendor_id),
+        }
+        for row in tx_result
+    ]
+
+    # Compute stats
+    flagged = sum(1 for t in transactions if t["flag_status"] not in ("approved", "rejected", "clear"))
+    total_spend = sum(t["amount"] for t in transactions)
+
+    return {
+        "grant": GrantResponse.model_validate(grant).model_dump(),
+        "transactions": transactions,
+        "stats": {"flagged": flagged, "total_spend": total_spend, "total_tx": len(transactions)},
+    }
 
 
 @router.post("/{grant_id}/activate")
