@@ -1,18 +1,7 @@
-import { auth0 } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import { Shield, Lock, ChevronRight, UserPlus } from "lucide-react";
+import { Shield, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
-export const dynamic = "force-dynamic";
-
-export default async function LoginPage() {
-  let session = null;
-  try {
-    session = await auth0.getSession();
-  } catch (err) {
-    console.error("[auth0] getSession error on /login:", err);
-  }
-  if (session?.user) redirect("/dashboard");
-
+export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#1F3864] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -29,33 +18,22 @@ export default async function LoginPage() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-1">Welcome</h2>
           <p className="text-sm text-gray-500 mb-8">
-            Sign in to your account or create a new one to get started.
+            Explore the GovGuard™ demo platform.
           </p>
 
-          <div className="space-y-3">
-            <a
-              href="/api/auth/login"
-              className="w-full flex items-center gap-3 bg-[#1F3864] hover:bg-[#2E75B6] text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group"
-            >
-              <Lock className="w-5 h-5 shrink-0" />
-              <span className="flex-1">Sign In Securely</span>
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </a>
-
-            <a
-              href="/api/auth/login?screen_hint=signup"
-              className="w-full flex items-center gap-3 border-2 border-[#1F3864] text-[#1F3864] hover:bg-[#1F3864] hover:text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 group"
-            >
-              <UserPlus className="w-5 h-5 shrink-0" />
-              <span className="flex-1">Create Account</span>
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </a>
-          </div>
+          <Link
+            href="/dashboard"
+            className="w-full flex items-center gap-3 bg-[#1F3864] hover:bg-[#2E75B6] text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg group"
+          >
+            <Shield className="w-5 h-5 shrink-0" />
+            <span className="flex-1">Enter GovGuard™</span>
+            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
 
           <div className="mt-6 pt-6 border-t border-gray-100">
             <div className="flex items-center gap-2 justify-center text-xs text-gray-400">
               <Shield className="w-3 h-3" />
-              <span>Protected by Auth0 · SOC 2 Type II · FedRAMP-aligned</span>
+              <span>SOC 2 Type II · FedRAMP-aligned · Demo Mode</span>
             </div>
           </div>
         </div>
