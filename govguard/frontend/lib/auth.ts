@@ -1,7 +1,15 @@
 import type { NextRequest } from "next/server";
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
 
-export const auth0 = new Auth0Client();
+let _auth0: Auth0Client | null = null;
+export function getAuth0Client(): Auth0Client {
+  if (!_auth0) _auth0 = new Auth0Client();
+  return _auth0;
+}
+export const auth0 = {
+  getSession: () => getAuth0Client().getSession(),
+  middleware: (req: NextRequest) => getAuth0Client().middleware(req),
+};
 
 export interface GovGuardUser {
   sub: string;
