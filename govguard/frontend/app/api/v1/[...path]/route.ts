@@ -34,11 +34,19 @@ async function proxy(request: NextRequest, { params }: { params: { path: string[
     ? await request.text()
     : undefined;
 
-  const res = await fetch(upstreamUrl, {
-    method: request.method,
-    headers,
-    body,
-  });
+  let res: Response;
+  try {
+    res = await fetch(upstreamUrl, {
+      method: request.method,
+      headers,
+      body,
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "upstream_unavailable", message: "Backend service is unavailable" },
+      { status: 503 }
+    );
+  }
 
   const data = res.status === 204 ? null : await res.json().catch(() => null);
   return NextResponse.json(data, { status: res.status });
