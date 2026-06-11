@@ -1,6 +1,5 @@
 """GovGuard™ — Compliance Engine Service"""
 import uuid
-from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
@@ -49,7 +48,7 @@ class ComplianceService:
         total = len(controls)
         passing = sum(1 for c in controls if c.status == "pass")
         failing = sum(1 for c in controls if c.status == "fail")
-        score = Decimal(str(round((passing / total * 100) if total else 0, 2)))
+        score = round((passing / total * 100) if total else 0.0, 2)
 
         resp = ControlListResponse(
             controls=[ControlResponse.model_validate(c) for c in controls],

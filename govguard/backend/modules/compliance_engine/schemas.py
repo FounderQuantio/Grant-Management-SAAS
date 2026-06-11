@@ -1,6 +1,5 @@
 """GovGuard™ — Compliance Schemas"""
 from datetime import datetime
-from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel
@@ -22,7 +21,7 @@ class ControlResponse(BaseModel):
 
 class ControlListResponse(BaseModel):
     controls: list[ControlResponse]
-    score: Decimal
+    score: float
     total: int
     passing: int
     failing: int
