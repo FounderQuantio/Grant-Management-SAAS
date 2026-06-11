@@ -9,6 +9,7 @@ export function getAuth0Client(): Auth0Client {
 export const auth0 = {
   getSession: (req?: NextRequest) =>
     req ? getAuth0Client().getSession(req) : getAuth0Client().getSession(),
+  getAccessToken: () => getAuth0Client().getAccessToken(),
   middleware: (req: NextRequest) => getAuth0Client().middleware(req),
 };
 

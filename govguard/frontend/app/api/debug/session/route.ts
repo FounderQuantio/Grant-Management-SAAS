@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const tokenResult = await auth0.getAccessToken(request);
+    const tokenResult = await auth0.getAccessToken();
     if (tokenResult?.token) {
       accessTokenClaims = decodeJwt(tokenResult.token);
     }
