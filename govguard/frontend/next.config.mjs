@@ -8,6 +8,7 @@ const nextConfig = {
     const scriptSrc = isDev
       ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
       : "script-src 'self' 'unsafe-inline'";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
     return [
       {
         source: "/(.*)",
@@ -17,7 +18,7 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Content-Security-Policy",
-            value: `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline';`,
+            value: `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; connect-src 'self' ${apiUrl} wss: ws:;`,
           },
         ],
       },
