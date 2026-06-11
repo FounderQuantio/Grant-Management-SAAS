@@ -1,19 +1,7 @@
 import type { NextRequest } from "next/server";
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
 
-const appBaseUrl =
-  process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.APP_BASE_URL;
-
-export const auth0 = new Auth0Client({
-  appBaseUrl,
-  routes: {
-    login: "/api/auth/login",
-    logout: "/api/auth/logout",
-    callback: "/api/auth/callback",
-  },
-});
+export const auth0 = new Auth0Client();
 
 export interface GovGuardUser {
   sub: string;
