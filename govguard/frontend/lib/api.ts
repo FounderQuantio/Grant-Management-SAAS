@@ -18,10 +18,6 @@ export class APIError extends Error {
   }
 }
 
-async function refreshToken(): Promise<boolean> {
-  const res = await fetch("/api/auth/refresh", { method: "POST" });
-  return res.ok;
-}
 
 export async function apiRequest<T>(
   path: string,
@@ -40,17 +36,6 @@ export async function apiRequest<T>(
   });
 
   if (res.status === 401) {
-    const refreshed = await refreshToken();
-    if (refreshed) {
-      // Retry with fresh token
-      const retryRes = await fetch(url, {
-        ...options,
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...options.headers },
-      });
-      if (retryRes.ok) return retryRes.json() as Promise<T>;
-    }
-    window.location.href = `/login?return_to=${window.location.pathname}`;
     throw new APIError(401, "SESSION_EXPIRED", "Session expired");
   }
 
