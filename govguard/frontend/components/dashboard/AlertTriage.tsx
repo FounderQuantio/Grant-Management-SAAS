@@ -49,7 +49,7 @@ export function AlertTriage() {
                     {alert.type?.replace(/_/g, " ")}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {new Date(alert.created_at || (alert as Record<string,unknown>).ts as string).toLocaleTimeString()}
+                    {new Date((alert as Record<string, unknown>).created_at as string || (alert as Record<string, unknown>).ts as string).toLocaleTimeString()}
                   </p>
                 </div>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${config.bg} ${config.text} border ${config.border} uppercase`}>
