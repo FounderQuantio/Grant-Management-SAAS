@@ -7,15 +7,21 @@ const RAILWAY_URL = process.env.RAILWAY_API_URL || process.env.NEXT_PUBLIC_API_U
 const SERVICE_SECRET = process.env.SERVICE_SECRET || "";
 
 async function proxy(request: NextRequest, { params }: { params: { path: string[] } }) {
-  const session = await auth0.getSession(request);
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  let role = "compliance_officer";
+  let tenantId = "00000000-0000-0000-0000-000000000001";
+  let userId = "00000000-0000-0000-0000-000000000001";
 
-  const user = session.user;
-  const role = (user["https://govguard.app/role"] as string) || "finance_staff";
-  const tenantId = (user["https://govguard.app/tenant_id"] as string) || "00000000-0000-0000-0000-000000000001";
-  const userId = (user["https://govguard.app/user_id"] as string) || user.sub;
+  try {
+    const session = await auth0.getSession(request);
+    if (session?.user) {
+      const user = session.user;
+      role = (user["https://govguard.app/role"] as string) || role;
+      tenantId = (user["https://govguard.app/tenant_id"] as string) || tenantId;
+      userId = (user["https://govguard.app/user_id"] as string) || user.sub || userId;
+    }
+  } catch {
+    // No session — use demo defaults
+  }
 
   const path = params.path.join("/");
   const search = request.nextUrl.search;
