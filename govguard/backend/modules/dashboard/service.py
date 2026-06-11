@@ -88,13 +88,21 @@ class DashboardService:
         ]
 
         kpis = {
-            "improper_payment_rate": improper_rate,
-            "compliance_score": round(avg_compliance, 2),
-            "open_findings": open_findings,
-            "flagged_tx_count": flagged_count,
-            "total_tx_count": total_tx,
-            "risk_leaderboard": leaderboard,
-            "period_days": period_days,
+            "improperPaymentRate": improper_rate,
+            "complianceScore": round(avg_compliance, 2),
+            "openFindings": open_findings,
+            "flaggedTxCount": flagged_count,
+            "totalTxCount": total_tx,
+            "riskLeaderboard": [
+                {
+                    "grantId": r["grant_id"],
+                    "awardNumber": r["award_number"],
+                    "agency": r["agency"],
+                    "complianceScore": r["compliance_score"],
+                }
+                for r in leaderboard
+            ],
+            "periodDays": period_days,
         }
         await cache_set(cache_key, kpis, ttl=300)
         return kpis
