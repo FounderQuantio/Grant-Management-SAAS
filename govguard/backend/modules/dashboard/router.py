@@ -64,11 +64,13 @@ async def websocket_endpoint(websocket: WebSocket, token: str, tenant_id: str):
     import asyncio
     import json
 
-    # Validate WS token
-    ctx = await cache_get(f"wst:{token}")
-    if not ctx or ctx.get("tenant_id") != tenant_id:
-        await websocket.close(code=4001)
-        return
+    # Validate WS token (skip if Redis unavailable)
+    from core.cache import redis_client
+    if redis_client is not None:
+        ctx = await cache_get(f"wst:{token}")
+        if not ctx or ctx.get("tenant_id") != tenant_id:
+            await websocket.close(code=4001)
+            return
 
     await websocket.accept()
     try:

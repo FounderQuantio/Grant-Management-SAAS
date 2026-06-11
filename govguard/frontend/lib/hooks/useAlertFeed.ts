@@ -12,8 +12,11 @@ export function useAlertFeed() {
 
   useEffect(() => {
     let reconnectTimeout: ReturnType<typeof setTimeout>;
+    let retries = 0;
+    const MAX_RETRIES = 3;
 
     async function connect() {
+      if (retries >= MAX_RETRIES) return;
       try {
         const { ws_token, endpoint } = await api.get<WSToken>("/api/v1/dashboard/ws-token");
         const sep = endpoint.includes("?") ? "&" : "?";
@@ -31,15 +34,21 @@ export function useAlertFeed() {
           } catch { /* ignore malformed messages */ }
         };
 
+        ws.onopen = () => { retries = 0; };
+
         ws.onclose = () => {
-          reconnectTimeout = setTimeout(connect, 5000);
+          retries++;
+          if (retries < MAX_RETRIES) {
+            reconnectTimeout = setTimeout(connect, 15000 * retries);
+          }
         };
 
-        ws.onerror = () => {
-          ws.close();
-        };
+        ws.onerror = () => { ws.close(); };
       } catch {
-        reconnectTimeout = setTimeout(connect, 10000);
+        retries++;
+        if (retries < MAX_RETRIES) {
+          reconnectTimeout = setTimeout(connect, 15000 * retries);
+        }
       }
     }
 
