@@ -23,7 +23,7 @@ async def _get_svc(
     return ComplianceService(db)
 
 
-@router.get("/controls", response_model=ControlListResponse)
+@router.get("/controls")
 async def list_controls(
     grant_id: Optional[UUID] = Query(None),
     status: Optional[str] = Query(None),

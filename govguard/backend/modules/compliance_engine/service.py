@@ -28,11 +28,11 @@ class ComplianceService:
         grant_id: Optional[UUID] = None,
         status: Optional[str] = None,
         domain: Optional[str] = None,
-    ) -> ControlListResponse:
+    ) -> dict:
         cache_key = f"cs:{grant_id}:{status}:{domain}"
         cached = await cache_get(cache_key)
         if cached:
-            return ControlListResponse(**cached)
+            return cached
 
         q = select(ComplianceControl).where(ComplianceControl.tenant_id == tenant_id)
         if grant_id:
@@ -50,14 +50,28 @@ class ComplianceService:
         failing = sum(1 for c in controls if c.status == "fail")
         score = round((passing / total * 100) if total else 0.0, 2)
 
-        resp = ControlListResponse(
-            controls=[ControlResponse.model_validate(c) for c in controls],
-            score=score,
-            total=total,
-            passing=passing,
-            failing=failing,
-        )
-        await cache_set(cache_key, resp.model_dump(mode="json"), ttl=300)
+        resp = {
+            "controls": [
+                {
+                    "id": str(c.id),
+                    "grantId": str(c.grant_id),
+                    "controlCode": c.control_code,
+                    "cfrClause": c.cfr_clause,
+                    "gaoPrinciple": c.gao_principle,
+                    "domain": c.domain,
+                    "status": c.status,
+                    "lastTested": c.last_tested.isoformat() if c.last_tested else None,
+                    "evidenceS3Key": c.evidence_s3_key,
+                    "remediationNote": c.remediation_note,
+                }
+                for c in controls
+            ],
+            "score": score,
+            "total": total,
+            "passing": passing,
+            "failing": failing,
+        }
+        await cache_set(cache_key, resp, ttl=300)
         return resp
 
     async def update_control(
