@@ -167,6 +167,6 @@ class DashboardService:
         await cache_set(f"wst:{token}", {"tenant_id": str(tenant_id), "user_id": str(user_id)}, ttl=300)
         return {
             "ws_token": token,
-            "endpoint": f"wss://api.govguard.gov/v1/ws",
+            "endpoint": settings.API_BASE_URL.replace("https://", "wss://").replace("http://", "ws://") + "/api/v1/dashboard/ws",
             "expires_in": 300,
         }
