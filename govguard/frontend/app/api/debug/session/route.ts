@@ -4,33 +4,45 @@ import { cookies } from "next/headers";
 
 export const runtime = "nodejs";
 
+function decodeJwt(token: string) {
+  try {
+    const [, payload] = token.split(".");
+    return JSON.parse(Buffer.from(payload, "base64url").toString());
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const cookieStore = cookies();
   const allCookies = cookieStore.getAll().map(c => c.name);
 
-  let sessionWithReq = null;
-  let sessionNoArg = null;
-  let errorWithReq = null;
-  let errorNoArg = null;
+  let session = null;
+  let sessionError = null;
+  let accessTokenClaims = null;
+  let accessTokenError = null;
 
   try {
-    sessionWithReq = await auth0.getSession(request);
+    session = await auth0.getSession(request);
   } catch (e) {
-    errorWithReq = String(e);
+    sessionError = String(e);
   }
 
   try {
-    sessionNoArg = await auth0.getSession();
+    const tokenResult = await auth0.getAccessToken(request);
+    if (tokenResult?.token) {
+      accessTokenClaims = decodeJwt(tokenResult.token);
+    }
   } catch (e) {
-    errorNoArg = String(e);
+    accessTokenError = String(e);
   }
 
   return NextResponse.json({
     cookies: allCookies,
-    sessionWithReq: sessionWithReq ? { user: sessionWithReq.user } : null,
-    sessionNoArg: sessionNoArg ? { user: sessionNoArg.user } : null,
-    errorWithReq,
-    errorNoArg,
+    sessionUser: session?.user ?? null,
+    accessTokenClaims,
+    sessionError,
+    accessTokenError,
     env: {
       AUTH0_DOMAIN: process.env.AUTH0_DOMAIN ? "set" : "missing",
       AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID ? "set" : "missing",

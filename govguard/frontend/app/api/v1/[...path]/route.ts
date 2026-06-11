@@ -14,7 +14,7 @@ async function proxy(request: NextRequest, { params }: { params: { path: string[
 
   const user = session.user;
   const role = (user["https://govguard.app/role"] as string) || "finance_staff";
-  const tenantId = (user["https://govguard.app/tenant_id"] as string) || "";
+  const tenantId = (user["https://govguard.app/tenant_id"] as string) || "00000000-0000-0000-0000-000000000001";
   const userId = (user["https://govguard.app/user_id"] as string) || user.sub;
 
   const path = params.path.join("/");
