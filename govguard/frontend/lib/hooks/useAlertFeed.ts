@@ -16,7 +16,8 @@ export function useAlertFeed() {
     async function connect() {
       try {
         const { ws_token, endpoint } = await api.get<WSToken>("/api/v1/dashboard/ws-token");
-        const ws = new WebSocket(`${endpoint}?token=${ws_token}`);
+        const sep = endpoint.includes("?") ? "&" : "?";
+        const ws = new WebSocket(`${endpoint}${sep}token=${ws_token}`);
         wsRef.current = ws;
 
         ws.onmessage = (event) => {
