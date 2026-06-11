@@ -1,15 +1,13 @@
 "use client";
-import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, FileText, AlertTriangle, ClipboardCheck,
   Settings, Users, BarChart3, Bell, LogOut, ChevronRight,
 } from "lucide-react";
-import { useSessionStore } from "@/lib/stores/session";
+import { useUser } from "@auth0/nextjs-auth0/client";
 import { useAlertStore } from "@/lib/stores/alerts";
 import { useAlertFeed } from "@/lib/hooks/useAlertFeed";
-import { api } from "@/lib/api";
 
 const NAV_ITEMS = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard",    roles: [] },
@@ -23,8 +21,13 @@ const NAV_ITEMS = [
   { href: "/admin/tenants",      icon: Settings,         label: "Admin",        roles: ["system_admin"] },
 ];
 
+const ROLE_LEVELS: Record<string, number> = {
+  system_admin: 7, agency_officer: 6, compliance_officer: 5,
+  finance_manager: 4, finance_staff: 3, auditor: 2, equity_analyst: 1,
+};
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, hasRole, clearUser } = useSessionStore();
+  const { user: auth0User } = useUser();
   const { unreadCount } = useAlertStore();
   const pathname = usePathname();
   const router = useRouter();
@@ -32,10 +35,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Connect WebSocket feed
   useAlertFeed();
 
-  const handleLogout = async () => {
-    try { await api.delete("/api/v1/auth/logout"); } catch { /* ignore */ }
-    clearUser();
-    router.push("/login");
+  const role = (auth0User?.["https://govguard.app/role"] as string) || "finance_staff";
+  const displayName = auth0User?.name || auth0User?.email || "User";
+
+  const hasRole = (...roles: string[]) => {
+    const userLevel = ROLE_LEVELS[role] || 0;
+    const required = Math.max(...roles.map((r) => ROLE_LEVELS[r] || 0));
+    return userLevel >= required;
+  };
+
+  const handleLogout = () => {
+    router.push("/api/auth/logout");
   };
 
   const navItems = NAV_ITEMS.filter(
@@ -76,12 +86,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* User info */}
         <div className="px-6 py-4 border-t border-white/10">
-          {user && (
+          {auth0User && (
             <div className="flex items-center justify-between">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white truncate">{user.displayName}</p>
+                <p className="text-sm font-medium text-white truncate">{displayName}</p>
                 <p className="text-xs text-blue-300 capitalize">
-                  {user.role.replace("_", " ")}
+                  {role.replace(/_/g, " ")}
                 </p>
               </div>
               <button
