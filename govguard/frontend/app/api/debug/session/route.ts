@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     cookies: allCookies,
-    sessionWithReq: sessionWithReq ? { user: sessionWithReq.user?.email } : null,
-    sessionNoArg: sessionNoArg ? { user: sessionNoArg.user?.email } : null,
+    sessionWithReq: sessionWithReq ? { user: sessionWithReq.user } : null,
+    sessionNoArg: sessionNoArg ? { user: sessionNoArg.user } : null,
     errorWithReq,
     errorNoArg,
     env: {
