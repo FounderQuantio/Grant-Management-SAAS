@@ -31,7 +31,11 @@ async def list_controls(
     user: UserContext = Depends(get_current_user),
     svc: ComplianceService = Depends(_get_svc),
 ):
-    return await svc.list_controls(user.tenant_id, grant_id, status, domain)
+    try:
+        return await svc.list_controls(user.tenant_id, grant_id, status, domain)
+    except Exception as exc:
+        import traceback
+        return {"error": str(exc), "type": type(exc).__name__, "trace": traceback.format_exc()}
 
 
 @router.patch("/controls/{control_id}", response_model=ControlResponse)
