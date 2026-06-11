@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_role, UserContext
+from core.auth import get_current_user_or_service as get_current_user, require_role, UserContext
 from core.db import get_db, set_tenant
 from core.models import AuditFinding, CorrectiveActionPlan
 from core.exceptions import NotFoundError

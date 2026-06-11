@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user, require_role, UserContext
+from core.auth import get_current_user_or_service as get_current_user, require_role, UserContext
 from core.db import get_db, set_tenant
 from modules.compliance_engine.schemas import (
     ControlListResponse, ControlUpdate, ControlResponse,
