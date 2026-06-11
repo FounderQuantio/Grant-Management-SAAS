@@ -6,7 +6,9 @@ export async function middleware(req: NextRequest) {
     return await auth0.middleware(req);
   } catch (err) {
     console.error("[auth0] middleware error:", err);
-    return NextResponse.next();
+    const loginUrl = new URL("/api/auth/login", req.url);
+    loginUrl.searchParams.set("returnTo", req.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
   }
 }
 

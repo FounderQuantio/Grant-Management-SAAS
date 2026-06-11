@@ -27,13 +27,29 @@ const ROLE_LEVELS: Record<string, number> = {
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user: auth0User } = useUser();
+  const { user: auth0User, isLoading } = useUser();
   const { unreadCount } = useAlertStore();
   const pathname = usePathname();
   const router = useRouter();
 
   // Connect WebSocket feed
   useAlertFeed();
+
+  if (!isLoading && !auth0User) {
+    router.replace("/api/auth/login");
+    return null;
+  }
+
+  if (isLoading || !auth0User) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[#1F3864] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Loading…</p>
+        </div>
+      </div>
+    );
+  }
 
   const role = (auth0User?.["https://govguard.app/role"] as string) || "finance_staff";
   const displayName = auth0User?.name || auth0User?.email || "User";

@@ -26,6 +26,7 @@ from modules.audit_hub.router import router as audit_router
 from modules.dashboard.router import router as dashboard_router
 from modules.erp_integration.router import router as erp_router
 from modules.webhooks.router import router as webhooks_router
+from modules.downloads.router import router as downloads_router
 
 log = structlog.get_logger()
 
@@ -164,6 +165,8 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_router,    prefix=f"{PREFIX}/dashboard",    tags=["Dashboard"])
     app.include_router(erp_router,          prefix=f"{PREFIX}/integrations", tags=["Integrations"])
     app.include_router(webhooks_router,     prefix=f"{PREFIX}/webhooks",     tags=["Webhooks"])
+
+    app.include_router(downloads_router,     prefix=f"{PREFIX}/downloads",    tags=["Downloads"])
 
     # GovGuard v2 — Add-on modules (do NOT modify anything above this line)
     from api.routes.v2.routes import router as v2_router
