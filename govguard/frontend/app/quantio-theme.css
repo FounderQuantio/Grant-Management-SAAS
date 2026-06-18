@@ -1,0 +1,834 @@
+/* ==========================================================================
+   Quantio Global — Shared Design System
+   Drop into any codebase. Import once at the root (e.g. main.jsx / index.js).
+   All values are CSS custom properties — override per-component as needed.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. COLOUR TOKENS
+   -------------------------------------------------------------------------- */
+:root {
+  /* Brand gold */
+  --qg-gold:            #C9A84C;
+  --qg-gold-light:      #D4AA50;
+  --qg-gold-dim:        rgba(201, 168, 76, 0.55);
+  --qg-gold-tint-1:     rgba(201, 168, 76, 0.18);
+  --qg-gold-tint-2:     rgba(201, 168, 76, 0.12);
+  --qg-gold-tint-3:     rgba(201, 168, 76, 0.08);
+  --qg-gold-border:     rgba(201, 168, 76, 0.25);
+  --qg-gold-border-h:   rgba(201, 168, 76, 0.45);
+
+  /* Backgrounds */
+  --qg-bg:              #141414;   /* page background */
+  --qg-sidebar:         #1A1A1A;   /* sidebar / nav panel */
+  --qg-surface:         #1C1C1C;   /* card surface */
+  --qg-surface-2:       #242424;   /* elevated card / hover state */
+  --qg-overlay:         rgba(0, 0, 0, 0.72);
+
+  /* Borders */
+  --qg-border:          rgba(255, 255, 255, 0.08);
+  --qg-border-2:        rgba(255, 255, 255, 0.13);
+  --qg-border-strong:   rgba(255, 255, 255, 0.22);
+
+  /* Text */
+  --qg-text-1:          #FFFFFF;
+  --qg-text-2:          rgba(255, 255, 255, 0.85);
+  --qg-text-3:          rgba(255, 255, 255, 0.50);
+  --qg-text-4:          rgba(255, 255, 255, 0.30);
+
+  /* Semantic colours (keep recognisable — only backgrounds go dark) */
+  --qg-red:             #EF4444;
+  --qg-red-bg:          rgba(239, 68, 68, 0.13);
+  --qg-red-border:      rgba(239, 68, 68, 0.28);
+
+  --qg-orange:          #F97316;
+  --qg-orange-bg:       rgba(249, 115, 22, 0.13);
+  --qg-orange-border:   rgba(249, 115, 22, 0.28);
+
+  --qg-yellow:          #EAB308;
+  --qg-yellow-bg:       rgba(234, 179, 8, 0.13);
+  --qg-yellow-border:   rgba(234, 179, 8, 0.28);
+
+  --qg-green:           #22C55E;
+  --qg-green-bg:        rgba(34, 197, 94, 0.13);
+  --qg-green-border:    rgba(34, 197, 94, 0.28);
+
+  --qg-purple:          #A78BFA;
+  --qg-purple-bg:       rgba(167, 139, 250, 0.13);
+  --qg-purple-border:   rgba(167, 139, 250, 0.28);
+
+  --qg-teal:            #2DD4BF;
+  --qg-teal-bg:         rgba(45, 212, 191, 0.13);
+  --qg-teal-border:     rgba(45, 212, 191, 0.28);
+
+  /* --------------------------------------------------------------------------
+     2. TYPOGRAPHY TOKENS
+     -------------------------------------------------------------------------- */
+  --qg-font:            "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --qg-font-mono:       "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+
+  --qg-text-xs:         9px;
+  --qg-text-sm:         11px;
+  --qg-text-base:       13px;
+  --qg-text-md:         14px;
+  --qg-text-lg:         15px;
+  --qg-text-xl:         18px;
+  --qg-text-2xl:        22px;
+  --qg-text-3xl:        28px;
+  --qg-text-4xl:        36px;
+
+  --qg-weight-normal:   400;
+  --qg-weight-medium:   500;
+  --qg-weight-semi:     600;
+  --qg-weight-bold:     700;
+  --qg-weight-extra:    800;
+  --qg-weight-black:    900;
+
+  --qg-leading-tight:   1.25;
+  --qg-leading-base:    1.5;
+  --qg-leading-loose:   1.8;
+
+  /* --------------------------------------------------------------------------
+     3. SPACING TOKENS
+     -------------------------------------------------------------------------- */
+  --qg-space-1:         4px;
+  --qg-space-2:         8px;
+  --qg-space-3:         12px;
+  --qg-space-4:         16px;
+  --qg-space-5:         20px;
+  --qg-space-6:         24px;
+  --qg-space-8:         32px;
+  --qg-space-10:        40px;
+  --qg-space-12:        48px;
+  --qg-space-16:        64px;
+
+  /* --------------------------------------------------------------------------
+     4. SHAPE TOKENS
+     -------------------------------------------------------------------------- */
+  --qg-radius-sm:       4px;
+  --qg-radius-md:       8px;
+  --qg-radius-lg:       12px;
+  --qg-radius-xl:       14px;
+  --qg-radius-2xl:      20px;
+  --qg-radius-pill:     100px;
+  --qg-radius-circle:   50%;
+
+  /* --------------------------------------------------------------------------
+     5. SHADOW TOKENS
+     -------------------------------------------------------------------------- */
+  --qg-shadow-sm:  0 1px 3px rgba(0,0,0,0.30), 0 1px 2px rgba(0,0,0,0.20);
+  --qg-shadow-md:  0 4px 12px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.20);
+  --qg-shadow-lg:  0 20px 48px rgba(0,0,0,0.60), 0 8px 16px rgba(0,0,0,0.30);
+  --qg-shadow-gold: 0 0 0 1px rgba(201,168,76,0.20), 0 20px 48px rgba(0,0,0,0.60);
+
+  /* --------------------------------------------------------------------------
+     6. TRANSITION
+     -------------------------------------------------------------------------- */
+  --qg-ease:            all 0.18s ease;
+  --qg-ease-slow:       all 0.25s ease;
+
+  /* --------------------------------------------------------------------------
+     7. THEME-ADAPTIVE TOKENS (override in [data-theme="light"])
+     -------------------------------------------------------------------------- */
+  --qg-nav-bg:          rgba(26, 26, 26, 0.96);
+  --qg-hover-subtle:    rgba(255, 255, 255, 0.05);
+  --qg-btn-subtle:      rgba(255, 255, 255, 0.06);
+  --qg-stripe-bg:       rgba(255, 255, 255, 0.018);
+  --qg-sidebar-text:    rgba(255, 255, 255, 0.50);
+  --qg-sidebar-text-h:  rgba(255, 255, 255, 0.80);
+  --qg-group-label:     rgba(255, 255, 255, 0.20);
+  --qg-nav-link-text:   rgba(255, 255, 255, 0.70);
+}
+
+/* --------------------------------------------------------------------------
+   LIGHT THEME OVERRIDES
+   Applied when <html data-theme="light"> is set.
+   -------------------------------------------------------------------------- */
+[data-theme="light"] {
+  /* Backgrounds */
+  --qg-bg:              #F5F4F0;
+  --qg-sidebar:         #FFFFFF;
+  --qg-surface:         #FFFFFF;
+  --qg-surface-2:       #ECEAE4;
+  --qg-overlay:         rgba(0, 0, 0, 0.50);
+
+  /* Borders */
+  --qg-border:          rgba(0, 0, 0, 0.08);
+  --qg-border-2:        rgba(0, 0, 0, 0.13);
+  --qg-border-strong:   rgba(0, 0, 0, 0.22);
+
+  /* Text */
+  --qg-text-1:          #0F0F0F;
+  --qg-text-2:          rgba(0, 0, 0, 0.80);
+  --qg-text-3:          rgba(0, 0, 0, 0.50);
+  --qg-text-4:          rgba(0, 0, 0, 0.30);
+
+  /* Semantic backgrounds — slightly more opaque on white */
+  --qg-red-bg:          rgba(239, 68,  68,  0.08);
+  --qg-red-border:      rgba(239, 68,  68,  0.22);
+  --qg-orange-bg:       rgba(249, 115, 22,  0.08);
+  --qg-orange-border:   rgba(249, 115, 22,  0.22);
+  --qg-yellow-bg:       rgba(234, 179, 8,   0.08);
+  --qg-yellow-border:   rgba(234, 179, 8,   0.22);
+  --qg-green-bg:        rgba(34,  197, 94,  0.08);
+  --qg-green-border:    rgba(34,  197, 94,  0.22);
+  --qg-purple-bg:       rgba(167, 139, 250, 0.08);
+  --qg-purple-border:   rgba(167, 139, 250, 0.22);
+  --qg-teal-bg:         rgba(45,  212, 191, 0.08);
+  --qg-teal-border:     rgba(45,  212, 191, 0.22);
+
+  /* Adaptive tokens */
+  --qg-nav-bg:          rgba(255, 255, 255, 0.96);
+  --qg-hover-subtle:    rgba(0, 0, 0, 0.04);
+  --qg-btn-subtle:      rgba(0, 0, 0, 0.04);
+  --qg-stripe-bg:       rgba(0, 0, 0, 0.018);
+  --qg-sidebar-text:    rgba(0, 0, 0, 0.55);
+  --qg-sidebar-text-h:  rgba(0, 0, 0, 0.80);
+  --qg-group-label:     rgba(0, 0, 0, 0.25);
+  --qg-nav-link-text:   rgba(0, 0, 0, 0.65);
+}
+
+/* --------------------------------------------------------------------------
+   7. BASE RESET
+   -------------------------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  background: var(--qg-bg);
+  color: var(--qg-text-1);
+  font-family: var(--qg-font);
+  font-size: var(--qg-text-base);
+  line-height: var(--qg-leading-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Native inputs inherit scheme from theme */
+input, textarea, select, button {
+  font-family: var(--qg-font);
+  color-scheme: dark;
+}
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select,
+[data-theme="light"] button {
+  color-scheme: light;
+}
+
+::placeholder {
+  color: var(--qg-text-4);
+}
+
+/* --------------------------------------------------------------------------
+   8. TYPOGRAPHY UTILITIES
+   -------------------------------------------------------------------------- */
+.qg-label {
+  font-size: var(--qg-text-xs);
+  font-weight: var(--qg-weight-bold);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--qg-text-3);
+}
+
+.qg-title {
+  font-size: var(--qg-text-2xl);
+  font-weight: var(--qg-weight-extra);
+  color: var(--qg-text-1);
+  letter-spacing: -0.3px;
+}
+
+.qg-subtitle {
+  font-size: var(--qg-text-base);
+  color: var(--qg-text-3);
+  line-height: var(--qg-leading-loose);
+}
+
+.qg-gold-text {
+  color: var(--qg-gold);
+  font-weight: var(--qg-weight-bold);
+}
+
+.qg-mono {
+  font-family: var(--qg-font-mono);
+}
+
+/* --------------------------------------------------------------------------
+   9. LAYOUT UTILITIES
+   -------------------------------------------------------------------------- */
+.qg-page {
+  min-height: 100vh;
+  background: var(--qg-bg);
+  padding: 0;
+}
+
+.qg-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--qg-space-6);
+}
+
+.qg-container-lg {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--qg-space-8);
+}
+
+.qg-section {
+  padding: var(--qg-space-16) 0;
+}
+
+.qg-flex { display: flex; }
+.qg-flex-col { display: flex; flex-direction: column; }
+.qg-flex-center { display: flex; align-items: center; justify-content: center; }
+.qg-flex-between { display: flex; align-items: center; justify-content: space-between; }
+.qg-gap-1 { gap: var(--qg-space-1); }
+.qg-gap-2 { gap: var(--qg-space-2); }
+.qg-gap-3 { gap: var(--qg-space-3); }
+.qg-gap-4 { gap: var(--qg-space-4); }
+.qg-gap-6 { gap: var(--qg-space-6); }
+
+.qg-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--qg-space-4); }
+.qg-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--qg-space-4); }
+.qg-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--qg-space-4); }
+
+@media (max-width: 1024px) {
+  .qg-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .qg-grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .qg-grid-4, .qg-grid-3, .qg-grid-2 { grid-template-columns: 1fr; }
+  .qg-container, .qg-container-lg { padding: 0 var(--qg-space-4); }
+}
+
+/* --------------------------------------------------------------------------
+   10. NAVIGATION BAR
+   -------------------------------------------------------------------------- */
+.qg-nav {
+  height: 60px;
+  background: var(--qg-nav-bg);
+  border-bottom: 1px solid var(--qg-border);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--qg-space-6);
+  gap: var(--qg-space-4);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.qg-nav-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--qg-space-2);
+  text-decoration: none;
+}
+
+.qg-nav-logo-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--qg-radius-md);
+  background: var(--qg-gold-tint-1);
+  border: 1px solid var(--qg-gold-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: var(--qg-weight-extra);
+  color: var(--qg-gold);
+}
+
+.qg-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.qg-nav-link {
+  color: var(--qg-nav-link-text);
+  font-size: var(--qg-text-base);
+  font-weight: var(--qg-weight-medium);
+  text-decoration: none;
+  padding: 7px 16px;
+  border-radius: var(--qg-radius-pill);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  transition: var(--qg-ease);
+}
+
+.qg-nav-link:hover,
+.qg-nav-link.active {
+  color: var(--qg-gold);
+  background: var(--qg-gold-tint-2);
+  border-color: var(--qg-gold-border);
+}
+
+/* --------------------------------------------------------------------------
+   11. SIDEBAR
+   -------------------------------------------------------------------------- */
+.qg-sidebar {
+  width: 208px;
+  background: var(--qg-sidebar);
+  border-right: 1px solid var(--qg-border);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.qg-sidebar-header {
+  padding: 16px 14px 12px;
+  border-bottom: 1px solid var(--qg-border);
+}
+
+.qg-sidebar-nav {
+  flex: 1;
+  padding: 10px 8px;
+  overflow-y: auto;
+}
+
+.qg-sidebar-group-label {
+  font-size: var(--qg-text-xs);
+  font-weight: var(--qg-weight-bold);
+  color: var(--qg-group-label);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 5px 10px 3px;
+  margin-bottom: 2px;
+}
+
+.qg-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 1px;
+  border: none;
+  border-radius: var(--qg-radius-md);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: var(--qg-weight-normal);
+  color: var(--qg-sidebar-text);
+  background: transparent;
+  text-align: left;
+  transition: var(--qg-ease);
+  text-decoration: none;
+}
+
+.qg-sidebar-item:hover {
+  background: var(--qg-hover-subtle);
+  color: var(--qg-sidebar-text-h);
+}
+
+.qg-sidebar-item.active {
+  background: var(--qg-gold-tint-1);
+  color: var(--qg-gold);
+  font-weight: var(--qg-weight-bold);
+}
+
+/* --------------------------------------------------------------------------
+   12. CARDS
+   -------------------------------------------------------------------------- */
+.qg-card {
+  background: var(--qg-surface);
+  border: 1px solid var(--qg-border);
+  border-radius: var(--qg-radius-xl);
+  padding: var(--qg-space-6);
+  transition: var(--qg-ease-slow);
+}
+
+.qg-card:hover {
+  background: var(--qg-surface-2);
+  border-color: rgba(201,168,76,0.20);
+  box-shadow: var(--qg-shadow-gold);
+  transform: translateY(-4px);
+}
+
+.qg-card-clickable {
+  cursor: pointer;
+}
+
+.qg-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--qg-radius-lg);
+  background: var(--qg-gold-tint-2);
+  border: 1px solid rgba(201,168,76,0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: var(--qg-weight-extra);
+  color: var(--qg-gold);
+  flex-shrink: 0;
+  transition: var(--qg-ease);
+}
+
+.qg-card:hover .qg-card-icon {
+  background: var(--qg-gold-tint-1);
+  border-color: rgba(201,168,76,0.45);
+}
+
+.qg-card-arrow {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--qg-radius-circle);
+  background: var(--qg-hover-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: rgba(255,255,255,0.22);
+  flex-shrink: 0;
+  transition: var(--qg-ease);
+}
+
+.qg-card:hover .qg-card-arrow {
+  background: var(--qg-gold);
+  color: #1A1A1A;
+}
+
+.qg-card-tag {
+  font-size: 10px;
+  font-weight: var(--qg-weight-semi);
+  color: var(--qg-gold);
+  letter-spacing: 0.4px;
+  margin-top: 1px;
+}
+
+.qg-card-desc {
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.45);
+  line-height: var(--qg-leading-loose);
+}
+
+.qg-card-cta {
+  font-size: 11px;
+  font-weight: var(--qg-weight-bold);
+  color: var(--qg-gold);
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  opacity: 0.38;
+  transition: opacity 0.2s;
+}
+
+.qg-card:hover .qg-card-cta {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   13. BUTTONS
+   -------------------------------------------------------------------------- */
+
+/* Primary — gold fill */
+.qg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qg-space-2);
+  padding: 9px 22px;
+  border-radius: var(--qg-radius-pill);
+  border: none;
+  cursor: pointer;
+  font-family: var(--qg-font);
+  font-size: var(--qg-text-base);
+  font-weight: var(--qg-weight-bold);
+  letter-spacing: 0.2px;
+  transition: var(--qg-ease);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.qg-btn-primary {
+  background: var(--qg-gold);
+  color: #1A1A1A;
+}
+
+.qg-btn-primary:hover {
+  background: var(--qg-gold-light);
+  box-shadow: 0 4px 20px rgba(201,168,76,0.35);
+  transform: translateY(-1px);
+}
+
+.qg-btn-secondary {
+  background: var(--qg-btn-subtle);
+  color: var(--qg-text-2);
+  border: 1px solid var(--qg-border-2);
+}
+
+.qg-btn-secondary:hover {
+  background: rgba(255,255,255,0.10);
+  border-color: var(--qg-border-strong);
+}
+
+.qg-btn-ghost {
+  background: transparent;
+  color: var(--qg-text-3);
+  border: none;
+}
+
+.qg-btn-ghost:hover {
+  color: var(--qg-text-1);
+}
+
+.qg-btn-danger {
+  background: var(--qg-red-bg);
+  color: var(--qg-red);
+  border: 1px solid var(--qg-red-border);
+}
+
+.qg-btn-danger:hover {
+  background: rgba(239,68,68,0.22);
+}
+
+.qg-btn-sm {
+  padding: 5px 14px;
+  font-size: var(--qg-text-sm);
+  border-radius: var(--qg-radius-md);
+}
+
+.qg-btn-lg {
+  padding: 12px 28px;
+  font-size: var(--qg-text-md);
+}
+
+.qg-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Home button — used in app headers */
+.qg-btn-home {
+  background: var(--qg-gold-tint-2);
+  color: var(--qg-gold);
+  border: 1px solid var(--qg-gold-border);
+  padding: 5px 12px;
+  border-radius: var(--qg-radius-md);
+  font-size: 12px;
+  font-weight: var(--qg-weight-bold);
+  cursor: pointer;
+  transition: var(--qg-ease);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.qg-btn-home:hover {
+  background: var(--qg-gold-tint-1);
+  border-color: var(--qg-gold-border-h);
+}
+
+/* --------------------------------------------------------------------------
+   14. FILTER PILLS
+   -------------------------------------------------------------------------- */
+.qg-pill {
+  padding: 4px 12px;
+  border-radius: var(--qg-radius-pill);
+  border: 1px solid var(--qg-border-2);
+  background: var(--qg-btn-subtle);
+  color: var(--qg-text-3);
+  font-size: var(--qg-text-xs);
+  font-weight: var(--qg-weight-bold);
+  cursor: pointer;
+  transition: var(--qg-ease);
+  white-space: nowrap;
+}
+
+.qg-pill:hover {
+  background: rgba(255,255,255,0.10);
+  color: var(--qg-text-1);
+}
+
+.qg-pill.active {
+  background: var(--qg-gold);
+  color: #1A1A1A;
+  border-color: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   15. FORM INPUTS
+   -------------------------------------------------------------------------- */
+.qg-input {
+  width: 100%;
+  padding: 9px 14px;
+  background: var(--qg-surface);
+  border: 1px solid var(--qg-border-2);
+  border-radius: var(--qg-radius-md);
+  color: var(--qg-text-1);
+  font-family: var(--qg-font);
+  font-size: var(--qg-text-base);
+  outline: none;
+  transition: var(--qg-ease);
+  appearance: none;
+}
+
+.qg-input:focus {
+  border-color: var(--qg-gold-border);
+  box-shadow: 0 0 0 3px var(--qg-gold-tint-3);
+}
+
+.qg-input::placeholder {
+  color: var(--qg-text-4);
+}
+
+.qg-label-text {
+  display: block;
+  font-size: var(--qg-text-xs);
+  font-weight: var(--qg-weight-bold);
+  color: var(--qg-text-3);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+/* --------------------------------------------------------------------------
+   16. TABLES
+   -------------------------------------------------------------------------- */
+.qg-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--qg-text-base);
+}
+
+.qg-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: var(--qg-text-xs);
+  font-weight: var(--qg-weight-bold);
+  color: var(--qg-text-3);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  background: var(--qg-surface-2);
+  border-bottom: 1px solid var(--qg-border-2);
+  white-space: nowrap;
+}
+
+.qg-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--qg-border);
+  color: var(--qg-text-2);
+  vertical-align: middle;
+}
+
+.qg-table tbody tr:nth-child(even) td {
+  background: var(--qg-stripe-bg);
+}
+
+.qg-table tbody tr:hover td {
+  background: var(--qg-hover-subtle);
+}
+
+/* --------------------------------------------------------------------------
+   17. BADGES / STATUS CHIPS
+   -------------------------------------------------------------------------- */
+.qg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--qg-radius-pill);
+  font-size: var(--qg-text-xs);
+  font-weight: var(--qg-weight-bold);
+  white-space: nowrap;
+}
+
+.qg-badge-critical { background: var(--qg-red-bg);    color: var(--qg-red);    border: 1px solid var(--qg-red-border); }
+.qg-badge-high     { background: var(--qg-orange-bg); color: var(--qg-orange); border: 1px solid var(--qg-orange-border); }
+.qg-badge-medium   { background: var(--qg-yellow-bg); color: var(--qg-yellow); border: 1px solid var(--qg-yellow-border); }
+.qg-badge-low      { background: var(--qg-green-bg);  color: var(--qg-green);  border: 1px solid var(--qg-green-border); }
+.qg-badge-gold     { background: var(--qg-gold-tint-2); color: var(--qg-gold); border: 1px solid var(--qg-gold-border); }
+.qg-badge-muted    { background: rgba(255,255,255,0.06); color: var(--qg-text-3); border: 1px solid var(--qg-border); }
+
+/* --------------------------------------------------------------------------
+   18. SECTION HEADERS (page-level)
+   -------------------------------------------------------------------------- */
+.qg-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qg-space-2);
+  margin-bottom: var(--qg-space-5);
+}
+
+.qg-section-label-badge {
+  background: var(--qg-gold);
+  color: #1A1A1A;
+  font-size: var(--qg-text-xs);
+  font-weight: var(--qg-weight-extra);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 4px;
+}
+
+.qg-section-label-note {
+  color: var(--qg-text-4);
+  font-size: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   19. DIVIDERS & SEPARATORS
+   -------------------------------------------------------------------------- */
+.qg-divider {
+  height: 1px;
+  background: var(--qg-border);
+  border: none;
+  margin: var(--qg-space-5) 0;
+}
+
+/* --------------------------------------------------------------------------
+   20. SCROLLBARS
+   -------------------------------------------------------------------------- */
+::-webkit-scrollbar          { width: 6px; height: 6px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: rgba(255,255,255,0.12); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(201,168,76,0.40); }
+
+[data-theme="light"] ::-webkit-scrollbar-thumb    { background: rgba(0,0,0,0.14); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(201,168,76,0.55); }
+
+/* --------------------------------------------------------------------------
+   21. FOCUS RING (accessibility)
+   -------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid var(--qg-gold);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   22. ANIMATIONS
+   -------------------------------------------------------------------------- */
+@keyframes qg-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes qg-slide-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes qg-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes qg-pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(201,168,76,0.40); }
+  50%       { box-shadow: 0 0 0 8px rgba(201,168,76,0.00); }
+}
+
+.qg-animate-in   { animation: qg-fade-in   0.22s ease both; }
+.qg-slide-in     { animation: qg-slide-in  0.22s ease both; }
+.qg-spin         { animation: qg-spin 0.8s linear infinite; }
+.qg-pulse-gold   { animation: qg-pulse-gold 2s ease infinite; }

@@ -5,9 +5,9 @@ import { api } from "@/lib/api";
 import { useAlertStore } from "@/lib/stores/alerts";
 
 const SEVERITY_CONFIG = {
-  critical: { bg: "bg-red-50",    text: "text-red-700",    border: "border-red-200",    Icon: AlertTriangle },
-  warning:  { bg: "bg-amber-50",  text: "text-amber-700",  border: "border-amber-200",  Icon: AlertTriangle },
-  info:     { bg: "bg-blue-50",   text: "text-blue-700",   border: "border-blue-200",   Icon: Bell },
+  critical: { bg: "var(--qg-red-bg)",    text: "var(--qg-red)",    border: "var(--qg-red-border)",    badgeClass: "qg-badge-critical", Icon: AlertTriangle },
+  warning:  { bg: "var(--qg-orange-bg)", text: "var(--qg-orange)", border: "var(--qg-orange-border)", badgeClass: "qg-badge-high",     Icon: AlertTriangle },
+  info:     { bg: "var(--qg-gold-tint-2)", text: "var(--qg-gold)", border: "var(--qg-gold-border)",   badgeClass: "qg-badge-gold",     Icon: Bell },
 };
 
 export function AlertTriage() {
@@ -22,37 +22,45 @@ export function AlertTriage() {
   const allAlerts = [...liveAlerts.slice(0, 5), ...apiAlerts.slice(0, 5)].slice(0, 8);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Alert Triage Queue</h3>
-        <span className="text-xs text-blue-600 font-medium">{allAlerts.length} active</span>
+    <div className="qg-card" style={{ padding: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--qg-text-1)" }}>Alert Triage Queue</h3>
+        <span className="qg-badge qg-badge-gold">{allAlerts.length} active</span>
       </div>
 
       {allAlerts.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 text-sm">
-          <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-400" />
-          No active alerts
+        <div style={{ textAlign: "center", padding: "32px 0", color: "var(--qg-text-4)" }}>
+          <CheckCircle2 size={28} color="var(--qg-green)" style={{ margin: "0 auto 10px", display: "block" }} />
+          <p style={{ fontSize: 13 }}>No active alerts</p>
         </div>
       ) : (
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 260, overflowY: "auto" }}>
           {allAlerts.map((alert, idx) => {
             const severity = (alert.severity as keyof typeof SEVERITY_CONFIG) || "info";
-            const config = SEVERITY_CONFIG[severity];
+            const config = SEVERITY_CONFIG[severity] || SEVERITY_CONFIG.info;
             return (
               <div
                 key={alert.id || idx}
-                className={`flex items-start gap-3 p-3 rounded-lg border ${config.bg} ${config.border}`}
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: 10, padding: 10,
+                  borderRadius: "var(--qg-radius-md)",
+                  background: config.bg,
+                  border: `1px solid ${config.border}`,
+                }}
               >
-                <config.Icon className={`w-4 h-4 mt-0.5 ${config.text} flex-shrink-0`} />
-                <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium ${config.text}`}>
+                <config.Icon size={13} color={config.text} style={{ marginTop: 1, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: config.text }}>
                     {alert.type?.replace(/_/g, " ")}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {new Date((alert as Record<string, unknown>).created_at as string || (alert as Record<string, unknown>).ts as string).toLocaleTimeString()}
+                  <p style={{ fontSize: 10, color: "var(--qg-text-4)", marginTop: 2 }}>
+                    {new Date(
+                      (alert as Record<string, unknown>).created_at as string ||
+                      (alert as Record<string, unknown>).ts as string
+                    ).toLocaleTimeString()}
                   </p>
                 </div>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${config.bg} ${config.text} border ${config.border} uppercase`}>
+                <span className={`qg-badge ${config.badgeClass}`} style={{ textTransform: "uppercase" }}>
                   {severity}
                 </span>
               </div>

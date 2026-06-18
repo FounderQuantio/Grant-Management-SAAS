@@ -7,7 +7,6 @@ import { ComplianceScoreRing } from "@/components/compliance/ComplianceScoreRing
 import { CheckCircle2, XCircle, Clock, Filter } from "lucide-react";
 
 const DOMAINS = ["all", "financial_management", "procurement", "subrecipient", "reporting", "cost_principles", "closeout"];
-const STATUS_FILTERS = ["all", "fail", "pass", "not_tested"];
 
 export default function CompliancePage() {
   const { id: grantId } = useParams<{ id: string }>();
@@ -16,68 +15,68 @@ export default function CompliancePage() {
 
   const { data, isLoading, mutate } = useCompliance(grantId, domain, status);
 
+  void status; // used via setStatus for future filter wiring
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="qg-animate-in">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Compliance Controls</h1>
-          <p className="text-sm text-gray-500 mt-1">2 CFR Part 200 & GAO Green Book alignment</p>
+          <span className="qg-section-label-badge" style={{ marginBottom: 8, display: "inline-block" }}>Compliance</span>
+          <h1 className="qg-title" style={{ marginTop: 8 }}>Compliance Controls</h1>
+          <p className="qg-subtitle" style={{ marginTop: 4 }}>2 CFR Part 200 & GAO Green Book alignment</p>
         </div>
         {data && <ComplianceScoreRing score={data.score} total={data.total} passing={data.passing} failing={data.failing} />}
       </div>
 
       {/* Stats bar */}
       {data && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
-            <CheckCircle2 className="w-8 h-8 text-green-600" />
+        <div className="qg-grid-3" style={{ marginBottom: 24 }}>
+          <div className="qg-card" style={{ borderColor: "var(--qg-green-border)", display: "flex", alignItems: "center", gap: 14, padding: 16 }}>
+            <CheckCircle2 size={28} color="var(--qg-green)" />
             <div>
-              <p className="text-2xl font-bold text-green-700">{data.passing}</p>
-              <p className="text-sm text-green-600">Passing</p>
+              <p style={{ fontSize: 22, fontWeight: 800, color: "var(--qg-green)" }}>{data.passing}</p>
+              <p style={{ fontSize: 11, color: "var(--qg-green)", opacity: 0.7 }}>Passing</p>
             </div>
           </div>
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
-            <XCircle className="w-8 h-8 text-red-600" />
+          <div className="qg-card" style={{ borderColor: "var(--qg-red-border)", display: "flex", alignItems: "center", gap: 14, padding: 16 }}>
+            <XCircle size={28} color="var(--qg-red)" />
             <div>
-              <p className="text-2xl font-bold text-red-700">{data.failing}</p>
-              <p className="text-sm text-red-600">Failing</p>
+              <p style={{ fontSize: 22, fontWeight: 800, color: "var(--qg-red)" }}>{data.failing}</p>
+              <p style={{ fontSize: 11, color: "var(--qg-red)", opacity: 0.7 }}>Failing</p>
             </div>
           </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-center gap-3">
-            <Clock className="w-8 h-8 text-gray-500" />
+          <div className="qg-card" style={{ display: "flex", alignItems: "center", gap: 14, padding: 16 }}>
+            <Clock size={28} color="var(--qg-text-3)" />
             <div>
-              <p className="text-2xl font-bold text-gray-700">{data.total - data.passing - data.failing}</p>
-              <p className="text-sm text-gray-600">Not Tested</p>
+              <p style={{ fontSize: 22, fontWeight: 800, color: "var(--qg-text-2)" }}>{data.total - data.passing - data.failing}</p>
+              <p style={{ fontSize: 11, color: "var(--qg-text-4)" }}>Not Tested</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex gap-3 mb-6 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-500" />
-          <span className="text-sm text-gray-600">Domain:</span>
-          {DOMAINS.map((d) => (
-            <button
-              key={d}
-              onClick={() => setDomain(d === "all" ? undefined : d)}
-              className={`text-xs px-3 py-1 rounded-full border transition-colors capitalize
-                ${(!domain && d === "all") || domain === d
-                  ? "bg-[#1F3864] text-white border-[#1F3864]"
-                  : "text-gray-600 border-gray-300 hover:border-blue-400"
-                }`}
-            >
-              {d.replace("_", " ")}
-            </button>
-          ))}
-        </div>
+      {/* Domain filters */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        <Filter size={13} color="var(--qg-text-4)" />
+        <span style={{ fontSize: 11, color: "var(--qg-text-4)", marginRight: 4 }}>Domain:</span>
+        {DOMAINS.map((d) => (
+          <button
+            key={d}
+            onClick={() => setDomain(d === "all" ? undefined : d)}
+            className={`qg-pill${(!domain && d === "all") || domain === d ? " active" : ""}`}
+            style={{ textTransform: "capitalize" }}
+          >
+            {d.replace("_", " ")}
+          </button>
+        ))}
       </div>
 
       {/* Control list */}
       {isLoading ? (
-        <div className="space-y-3 animate-pulse">
-          {[...Array(8)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-lg" />)}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[...Array(8)].map((_, i) => (
+            <div key={i} style={{ height: 56, background: "var(--qg-surface)", borderRadius: "var(--qg-radius-md)", border: "1px solid var(--qg-border)", opacity: 0.6 }} />
+          ))}
         </div>
       ) : (
         <ControlAccordion controls={data?.controls ?? []} grantId={grantId} onUpdate={() => mutate()} />

@@ -4,10 +4,10 @@ import { Bell, CheckCheck, AlertTriangle, Info, CheckCircle2 } from "lucide-reac
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
-const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string }> = {
-  alert:   { icon: AlertTriangle, color: "text-red-600 bg-red-50" },
-  info:    { icon: Info,          color: "text-blue-600 bg-blue-50" },
-  success: { icon: CheckCircle2,  color: "text-green-600 bg-green-50" },
+const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+  alert:   { icon: AlertTriangle, color: "var(--qg-red)",    bg: "var(--qg-red-bg)" },
+  info:    { icon: Info,          color: "var(--qg-gold)",   bg: "var(--qg-gold-tint-2)" },
+  success: { icon: CheckCircle2,  color: "var(--qg-green)",  bg: "var(--qg-green-bg)" },
 };
 
 export default function NotificationsPage() {
@@ -20,46 +20,65 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="qg-animate-in" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-          <p className="text-sm text-gray-500 mt-1">Alerts and system messages</p>
+          <span className="qg-section-label-badge" style={{ marginBottom: 8, display: "inline-block" }}>Inbox</span>
+          <h1 className="qg-title" style={{ marginTop: 8 }}>Notifications</h1>
+          <p className="qg-subtitle" style={{ marginTop: 4 }}>Alerts and system messages</p>
         </div>
         {notifications.length > 0 && (
-          <button onClick={markAllRead}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
-            <CheckCheck className="w-4 h-4" /> Mark all read
+          <button onClick={markAllRead} className="qg-btn qg-btn-secondary qg-btn-sm">
+            <CheckCheck size={13} /> Mark all read
           </button>
         )}
       </div>
 
       {isLoading ? (
-        <div className="space-y-3 animate-pulse">{[...Array(5)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-xl" />)}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} style={{ height: 64, background: "var(--qg-surface)", borderRadius: "var(--qg-radius-xl)", border: "1px solid var(--qg-border)", opacity: 0.6 }} />
+          ))}
+        </div>
       ) : notifications.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p className="font-medium text-gray-700">No notifications</p>
-          <p className="text-sm text-gray-500 mt-1">You're all caught up.</p>
+        <div className="qg-card" style={{ textAlign: "center", padding: "64px 24px" }}>
+          <Bell size={36} color="var(--qg-text-4)" style={{ margin: "0 auto 12px", display: "block" }} />
+          <p style={{ fontWeight: 700, color: "var(--qg-text-1)", fontSize: 14 }}>No notifications</p>
+          <p style={{ fontSize: 12, color: "var(--qg-text-4)", marginTop: 4 }}>You&apos;re all caught up.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {notifications.map((n: Record<string, unknown>) => {
             const type = String(n.type || "info");
             const cfg = TYPE_CONFIG[type] || TYPE_CONFIG.info;
             const Icon = cfg.icon;
             return (
-              <div key={String(n.id)}
-                className={`flex items-start gap-4 p-4 bg-white rounded-xl border transition-colors ${!n.read ? "border-blue-200 bg-blue-50/30" : "border-gray-200"}`}>
-                <div className={`p-2 rounded-lg flex-shrink-0 ${cfg.color}`}>
-                  <Icon className="w-4 h-4" />
+              <div
+                key={String(n.id)}
+                className="qg-card"
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px",
+                  borderColor: !n.read ? "var(--qg-gold-border)" : "var(--qg-border)",
+                  background: !n.read ? "rgba(201,168,76,0.04)" : "var(--qg-surface)",
+                }}
+              >
+                <div style={{ padding: 7, borderRadius: "var(--qg-radius-md)", background: cfg.bg, flexShrink: 0 }}>
+                  <Icon size={13} color={cfg.color} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{String(n.title || n.message || "")}</p>
-                  {n.body && <p className="text-sm text-gray-500 mt-0.5">{String(n.body)}</p>}
-                  <p className="text-xs text-gray-400 mt-1">{String(n.created_at || "").slice(0, 10)}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--qg-text-1)" }}>
+                    {String(n.title || n.message || "")}
+                  </p>
+                  {n.body && (
+                    <p style={{ fontSize: 12, color: "var(--qg-text-3)", marginTop: 3 }}>{String(n.body)}</p>
+                  )}
+                  <p style={{ fontSize: 10, color: "var(--qg-text-4)", marginTop: 4 }}>
+                    {String(n.created_at || "").slice(0, 10)}
+                  </p>
                 </div>
-                {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5" />}
+                {!n.read && (
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--qg-gold)", flexShrink: 0, marginTop: 4 }} />
+                )}
               </div>
             );
           })}

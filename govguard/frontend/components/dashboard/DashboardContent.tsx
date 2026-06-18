@@ -5,9 +5,7 @@ import { DashboardKPIs } from "@/types";
 import { KPITile } from "./KPITile";
 import { RiskLeaderboard } from "./RiskLeaderboard";
 import { AlertTriage } from "./AlertTriage";
-import {
-  TrendingDown, ClipboardCheck, AlertTriangle, DollarSign,
-} from "lucide-react";
+import { TrendingDown, ClipboardCheck, AlertTriangle, DollarSign } from "lucide-react";
 
 export function DashboardContent() {
   const { data: kpis, error, isLoading } = useSWR<DashboardKPIs>(
@@ -18,16 +16,19 @@ export function DashboardContent() {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+      <div style={{
+        background: "var(--qg-red-bg)", border: "1px solid var(--qg-red-border)",
+        borderRadius: "var(--qg-radius-xl)", padding: 24, color: "var(--qg-red)",
+        fontSize: 13,
+      }}>
         Failed to load dashboard data. Please refresh the page.
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* KPI Tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div className="qg-grid-4">
         <KPITile
           label="Improper Payment Rate"
           value={`${kpis?.improperPaymentRate?.toFixed(1) ?? "--"}%`}
@@ -62,8 +63,7 @@ export function DashboardContent() {
         />
       </div>
 
-      {/* Bottom grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         <RiskLeaderboard leaderboard={kpis?.riskLeaderboard ?? []} loading={isLoading} />
         <AlertTriage />
       </div>

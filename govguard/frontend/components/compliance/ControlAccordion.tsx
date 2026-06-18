@@ -5,10 +5,10 @@ import { CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, Upload, FileText 
 import { api } from "@/lib/api";
 
 const STATUS_CONFIG = {
-  pass:           { icon: CheckCircle2, color: "text-green-600",  bg: "bg-green-50",  border: "border-green-200" },
-  fail:           { icon: XCircle,      color: "text-red-600",    bg: "bg-red-50",    border: "border-red-200" },
-  not_tested:     { icon: Clock,        color: "text-gray-500",   bg: "bg-gray-50",   border: "border-gray-200" },
-  not_applicable: { icon: Clock,        color: "text-gray-400",   bg: "bg-gray-50",   border: "border-gray-100" },
+  pass:           { icon: CheckCircle2, color: "var(--qg-green)",  bg: "var(--qg-green-bg)",  border: "var(--qg-green-border)" },
+  fail:           { icon: XCircle,      color: "var(--qg-red)",    bg: "var(--qg-red-bg)",    border: "var(--qg-red-border)" },
+  not_tested:     { icon: Clock,        color: "var(--qg-text-3)", bg: "var(--qg-surface-2)", border: "var(--qg-border)" },
+  not_applicable: { icon: Clock,        color: "var(--qg-text-4)", bg: "var(--qg-surface-2)", border: "var(--qg-border)" },
 };
 
 function ControlRow({ control, grantId, onUpdate }: { control: ComplianceControl; grantId: string; onUpdate: () => void }) {
@@ -29,68 +29,96 @@ function ControlRow({ control, grantId, onUpdate }: { control: ComplianceControl
   };
 
   return (
-    <div className={`border rounded-lg overflow-hidden ${config.border}`}>
+    <div style={{ border: `1px solid ${config.border}`, borderRadius: "var(--qg-radius-md)", overflow: "hidden" }}>
       <button
-        className={`w-full flex items-center gap-4 p-4 text-left ${config.bg} hover:opacity-90 transition-opacity`}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
+          textAlign: "left", background: config.bg, border: "none", cursor: "pointer",
+          transition: "var(--qg-ease)",
+        }}
         onClick={() => setExpanded(!expanded)}
       >
-        <StatusIcon className={`w-5 h-5 flex-shrink-0 ${config.color}`} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-900">{control.controlCode}</span>
+        <StatusIcon size={15} color={config.color} style={{ flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--qg-text-1)" }}>{control.controlCode}</span>
             {control.cfrClause && (
-              <span className="text-xs text-gray-500 bg-white/70 px-1.5 py-0.5 rounded border border-gray-200">
+              <span style={{
+                fontSize: 9, color: "var(--qg-text-4)",
+                background: "rgba(255,255,255,0.07)", padding: "1px 6px",
+                borderRadius: "var(--qg-radius-sm)", border: "1px solid var(--qg-border)",
+              }}>
                 {control.cfrClause}
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-0.5 capitalize">{control.domain.replace("_", " ")}</p>
+          <p style={{ fontSize: 11, color: "var(--qg-text-4)", marginTop: 2, textTransform: "capitalize" }}>
+            {control.domain.replace("_", " ")}
+          </p>
         </div>
-        <span className={`text-xs font-medium capitalize px-2 py-1 rounded-full ${config.bg} ${config.color} border ${config.border}`}>
+        <span className="qg-badge" style={{
+          background: config.bg, color: config.color, border: `1px solid ${config.border}`,
+          textTransform: "capitalize",
+        }}>
           {control.status.replace("_", " ")}
         </span>
-        {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        {expanded
+          ? <ChevronUp size={13} color="var(--qg-text-4)" />
+          : <ChevronDown size={13} color="var(--qg-text-4)" />
+        }
       </button>
 
       {expanded && (
-        <div className="p-4 bg-white border-t border-gray-200 space-y-4">
+        <div style={{
+          padding: 16, background: "var(--qg-surface-2)",
+          borderTop: `1px solid var(--qg-border)`,
+          display: "flex", flexDirection: "column", gap: 12,
+        }}>
           {control.gaoPrinciple && (
-            <p className="text-xs text-gray-500">
-              <span className="font-medium">GAO Principle:</span> {control.gaoPrinciple}
+            <p style={{ fontSize: 11, color: "var(--qg-text-4)" }}>
+              <span style={{ fontWeight: 600, color: "var(--qg-text-3)" }}>GAO Principle:</span>{" "}
+              {control.gaoPrinciple}
             </p>
           )}
           {control.remediationNote && (
-            <p className="text-sm text-gray-700 bg-amber-50 border border-amber-200 rounded p-3">
-              <span className="font-medium">Remediation note:</span> {control.remediationNote}
+            <p style={{
+              fontSize: 12, color: "var(--qg-yellow)",
+              background: "var(--qg-yellow-bg)", border: "1px solid var(--qg-yellow-border)",
+              borderRadius: "var(--qg-radius-md)", padding: "8px 12px",
+            }}>
+              <span style={{ fontWeight: 700 }}>Remediation note:</span>{" "}
+              {control.remediationNote}
             </p>
           )}
           {control.lastTested && (
-            <p className="text-xs text-gray-500">
+            <p style={{ fontSize: 11, color: "var(--qg-text-4)" }}>
               Last tested: {new Date(control.lastTested).toLocaleDateString()}
             </p>
           )}
 
-          <div className="flex gap-2 flex-wrap">
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
               onClick={() => updateStatus("pass")}
               disabled={isUpdating}
-              className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+              className="qg-btn qg-btn-sm"
+              style={{ background: "var(--qg-green-bg)", color: "var(--qg-green)", border: "1px solid var(--qg-green-border)" }}
             >
               Mark Pass
             </button>
             <button
               onClick={() => updateStatus("fail")}
               disabled={isUpdating}
-              className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              className="qg-btn qg-btn-sm"
+              style={{ background: "var(--qg-red-bg)", color: "var(--qg-red)", border: "1px solid var(--qg-red-border)" }}
             >
               Mark Fail
             </button>
-            <button className="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 flex items-center gap-1 transition-colors">
-              <Upload className="w-3 h-3" /> Upload Evidence
+            <button className="qg-btn qg-btn-secondary qg-btn-sm" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <Upload size={11} /> Upload Evidence
             </button>
             {control.evidenceS3Key && (
-              <button className="text-xs px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-1 transition-colors">
-                <FileText className="w-3 h-3" /> View Evidence
+              <button className="qg-btn qg-btn-sm" style={{ background: "var(--qg-gold-tint-2)", color: "var(--qg-gold)", border: "1px solid var(--qg-gold-border)", display: "flex", alignItems: "center", gap: 5 }}>
+                <FileText size={11} /> View Evidence
               </button>
             )}
           </div>
@@ -100,7 +128,6 @@ function ControlRow({ control, grantId, onUpdate }: { control: ComplianceControl
   );
 }
 
-// Group controls by domain
 export function ControlAccordion({ controls, grantId, onUpdate }: {
   controls: ComplianceControl[];
   grantId: string;
@@ -114,13 +141,16 @@ export function ControlAccordion({ controls, grantId, onUpdate }: {
   }, {} as Record<string, ComplianceControl[]>);
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {Object.entries(grouped).map(([domain, ctrls]) => (
         <div key={domain}>
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3 capitalize">
+          <h3 style={{
+            fontSize: 10, fontWeight: 800, color: "var(--qg-text-4)",
+            textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: 10,
+          }}>
             {domain.replace(/_/g, " ")} ({ctrls.length})
           </h3>
-          <div className="space-y-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {ctrls.map((ctrl) => (
               <ControlRow key={ctrl.id} control={ctrl} grantId={grantId} onUpdate={onUpdate} />
             ))}

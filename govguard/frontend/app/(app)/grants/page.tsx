@@ -7,6 +7,12 @@ import { useForm } from "react-hook-form";
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
+const STATUS_CONFIG: Record<string, { badgeClass: string; icon: React.ElementType }> = {
+  draft:  { badgeClass: "qg-badge-muted",   icon: Clock },
+  active: { badgeClass: "qg-badge-low",     icon: CheckCircle2 },
+  closed: { badgeClass: "qg-badge-gold",    icon: CheckCircle2 },
+};
+
 export default function GrantsPage() {
   const { data, isLoading, mutate } = useSWR("/api/v1/grants", fetcher);
   const [showForm, setShowForm] = useState(false);
@@ -29,88 +35,106 @@ export default function GrantsPage() {
     } finally { setIsCreating(false); }
   };
 
-  const STATUS_CONFIG: Record<string, { color: string; icon: React.ElementType }> = {
-    draft:  { color: "text-gray-600 bg-gray-100 border-gray-200", icon: Clock },
-    active: { color: "text-green-700 bg-green-50 border-green-200", icon: CheckCircle2 },
-    closed: { color: "text-blue-700 bg-blue-50 border-blue-200", icon: CheckCircle2 },
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="qg-animate-in" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Grants</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your federal award portfolio</p>
+          <span className="qg-section-label-badge" style={{ marginBottom: 8, display: "inline-block" }}>Portfolio</span>
+          <h1 className="qg-title" style={{ marginTop: 8 }}>Grants</h1>
+          <p className="qg-subtitle" style={{ marginTop: 4 }}>Manage your federal award portfolio</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-[#1F3864] hover:bg-[#2E75B6] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          <Plus className="w-4 h-4" /> New Grant
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="qg-btn qg-btn-primary qg-btn-sm"
+        >
+          <Plus size={13} /> New Grant
         </button>
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Create New Grant</h3>
-          <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4">
+        <div className="qg-card qg-animate-in">
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--qg-text-1)", marginBottom: 16 }}>Create New Grant</h3>
+          <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[
-              { name: "award_number", label: "Award Number", placeholder: "2024-HUD-001" },
-              { name: "agency", label: "Awarding Agency", placeholder: "Dept. of Housing & Urban Development" },
-              { name: "program_cfda", label: "CFDA/ALN Number", placeholder: "14.218" },
-              { name: "total_amount", label: "Total Amount ($)", placeholder: "500000", type: "number" },
-              { name: "period_start", label: "Period Start", type: "date" },
-              { name: "period_end", label: "Period End", type: "date" },
+              { name: "award_number",  label: "Award Number",      placeholder: "2024-HUD-001" },
+              { name: "agency",        label: "Awarding Agency",   placeholder: "Dept. of Housing & Urban Development" },
+              { name: "program_cfda",  label: "CFDA/ALN Number",   placeholder: "14.218" },
+              { name: "total_amount",  label: "Total Amount ($)",  placeholder: "500000", type: "number" },
+              { name: "period_start",  label: "Period Start",      type: "date" },
+              { name: "period_end",    label: "Period End",        type: "date" },
             ].map(({ name, label, placeholder, type }) => (
               <div key={name}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                <input {...register(name, { required: true })} type={type || "text"} placeholder={placeholder}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="qg-label-text">{label}</label>
+                <input
+                  {...register(name, { required: true })}
+                  type={type || "text"}
+                  placeholder={placeholder}
+                  className="qg-input"
+                />
               </div>
             ))}
-            <div className="col-span-2 flex gap-3 pt-2">
-              <button type="submit" disabled={isCreating}
-                className="bg-[#1F3864] text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-[#2E75B6] transition-colors disabled:opacity-50">
+            <div style={{ gridColumn: "span 2", display: "flex", gap: 10, paddingTop: 4 }}>
+              <button type="submit" disabled={isCreating} className="qg-btn qg-btn-primary qg-btn-sm">
                 {isCreating ? "Creating…" : "Create Grant"}
               </button>
-              <button type="button" onClick={() => { setShowForm(false); reset(); }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button
+                type="button"
+                onClick={() => { setShowForm(false); reset(); }}
+                className="qg-btn qg-btn-secondary qg-btn-sm"
+              >
+                Cancel
+              </button>
             </div>
           </form>
         </div>
       )}
 
       {isLoading ? (
-        <div className="space-y-3 animate-pulse">{[...Array(4)].map((_,i) => <div key={i} className="h-20 bg-gray-100 rounded-xl" />)}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} style={{ height: 72, background: "var(--qg-surface)", borderRadius: "var(--qg-radius-xl)", border: "1px solid var(--qg-border)", opacity: 0.6 }} />
+          ))}
+        </div>
       ) : grants.length === 0 ? (
-        <div className="text-center py-16 text-gray-500 bg-white rounded-xl border border-gray-200">
-          <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p className="font-medium text-gray-700 mb-1">No grants yet</p>
-          <p className="text-sm text-gray-500 mb-4">Create your first grant to start tracking compliance.</p>
-          <button onClick={() => setShowForm(true)}
-            className="bg-[#1F3864] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#2E75B6] transition-colors">
+        <div className="qg-card" style={{ textAlign: "center", padding: "64px 24px" }}>
+          <FileText size={36} color="var(--qg-text-4)" style={{ margin: "0 auto 12px", display: "block" }} />
+          <p style={{ fontWeight: 700, color: "var(--qg-text-1)", marginBottom: 6, fontSize: 14 }}>No grants yet</p>
+          <p style={{ fontSize: 12, color: "var(--qg-text-4)", marginBottom: 16 }}>Create your first grant to start tracking compliance.</p>
+          <button onClick={() => setShowForm(true)} className="qg-btn qg-btn-primary qg-btn-sm">
             Create First Grant
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {grants.map((g: Record<string, unknown>) => {
             const st = String(g.status || "draft");
             const cfg = STATUS_CONFIG[st] || STATUS_CONFIG.draft;
             const StatusIcon = cfg.icon;
             return (
-              <Link key={String(g.id)} href={`/grants/${g.id}`}
-                className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4 hover:shadow-md transition-all group">
-                <div className="p-3 bg-blue-50 rounded-lg"><FileText className="w-5 h-5 text-blue-600" /></div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900">{String(g.award_number)}</p>
-                  <p className="text-sm text-gray-500 truncate">{String(g.agency)}</p>
+              <Link
+                key={String(g.id)}
+                href={`/grants/${g.id}`}
+                className="qg-card qg-card-clickable"
+                style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", textDecoration: "none" }}
+              >
+                <div className="qg-card-icon" style={{ width: 40, height: 40 }}>
+                  <FileText size={15} />
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">${Number(g.total_amount).toLocaleString()}</p>
-                  <span className={"inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border mt-1 " + cfg.color}>
-                    <StatusIcon className="w-3 h-3" /> {st}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 700, color: "var(--qg-text-1)", fontSize: 13 }}>{String(g.award_number)}</p>
+                  <p style={{ fontSize: 11, color: "var(--qg-text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>
+                    {String(g.agency)}
+                  </p>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "var(--qg-text-1)" }}>
+                    ${Number(g.total_amount).toLocaleString()}
+                  </p>
+                  <span className={`qg-badge ${cfg.badgeClass}`} style={{ marginTop: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <StatusIcon size={9} /> {st}
                   </span>
                 </div>
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0" />
+                <ChevronRight size={15} color="var(--qg-text-4)" />
               </Link>
             );
           })}

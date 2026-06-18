@@ -3,11 +3,12 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, FileText, AlertTriangle, ClipboardCheck,
-  Settings, Users, BarChart3, Bell, LogOut, ChevronRight,
+  Settings, Users, BarChart3, Bell, LogOut,
 } from "lucide-react";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useAlertStore } from "@/lib/stores/alerts";
 import { useAlertFeed } from "@/lib/hooks/useAlertFeed";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 const NAV_ITEMS = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard",    roles: [] },
@@ -32,7 +33,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Connect WebSocket feed
   useAlertFeed();
 
   const role = (auth0User?.["https://govguard.app/role"] as string) || "finance_staff";
@@ -44,87 +44,108 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return userLevel >= required;
   };
 
-  const handleLogout = () => {
-    router.push("/api/auth/logout");
-  };
-
   const navItems = NAV_ITEMS.filter(
     (item) => item.roles.length === 0 || hasRole(...item.roles)
   );
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div style={{ display: "flex", height: "100vh", background: "var(--qg-bg)", overflow: "hidden" }}>
       {/* Sidebar */}
-      <aside className="w-64 bg-[#1F3864] text-white flex flex-col shadow-xl">
-        {/* Logo */}
-        <div className="px-6 py-5 border-b border-white/10">
-          <span className="text-xl font-bold tracking-tight">GovGuard™</span>
-          <p className="text-xs text-blue-200 mt-0.5">Grant Compliance Platform</p>
+      <aside className="qg-sidebar">
+        <div className="qg-sidebar-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div className="qg-nav-logo-badge" style={{ fontSize: 10 }}>GG</div>
+            <div>
+              <div style={{ color: "var(--qg-text-1)", fontWeight: 800, fontSize: 13, letterSpacing: "-0.2px" }}>
+                GovGuard™
+              </div>
+              <div style={{ color: "var(--qg-gold)", fontSize: 9, letterSpacing: "0.6px", textTransform: "uppercase", marginTop: 1 }}>
+                Compliance Platform
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4">
+        <nav className="qg-sidebar-nav">
           {navItems.map((item) => {
             const active = pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-6 py-3 text-sm transition-colors
-                  ${active
-                    ? "bg-[#2E75B6] text-white font-medium"
-                    : "text-blue-100 hover:bg-white/10"
-                  }`}
+                className={`qg-sidebar-item${active ? " active" : ""}`}
               >
-                <item.icon className="w-4 h-4" />
+                <item.icon size={14} strokeWidth={active ? 2.2 : 1.8} />
                 {item.label}
-                {active && <ChevronRight className="w-3 h-3 ml-auto" />}
               </Link>
             );
           })}
         </nav>
 
-        {/* User info */}
-        <div className="px-6 py-4 border-t border-white/10">
+        <div style={{ padding: "12px 14px", borderTop: "1px solid var(--qg-border)" }}>
           {auth0User && (
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-white truncate">{displayName}</p>
-                <p className="text-xs text-blue-300 capitalize">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--qg-text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {displayName}
+                </p>
+                <p style={{ fontSize: 10, color: "var(--qg-gold)", textTransform: "capitalize", marginTop: 1 }}>
                   {role.replace(/_/g, " ")}
                 </p>
               </div>
               <button
-                onClick={handleLogout}
-                className="p-1.5 rounded hover:bg-white/10 text-blue-200 hover:text-white transition-colors"
+                onClick={() => router.push("/api/auth/logout")}
+                style={{ padding: 6, borderRadius: "var(--qg-radius-md)", background: "transparent", border: "none", color: "var(--qg-text-4)", cursor: "pointer", transition: "var(--qg-ease)" }}
                 title="Sign out"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut size={14} />
               </button>
             </div>
           )}
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top nav */}
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
-          <div />
-          <div className="flex items-center gap-4">
-            <Link href="/notifications" className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
-              <Bell className="w-5 h-5 text-gray-600" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </Link>
-          </div>
+      {/* Main area */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Top bar */}
+        <header style={{
+          height: 52,
+          background: "var(--qg-nav-bg)",
+          borderBottom: "1px solid var(--qg-border)",
+          padding: "0 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          flexShrink: 0,
+          gap: 10,
+        }}>
+          <ThemeToggle />
+          <Link
+            href="/notifications"
+            style={{ position: "relative", padding: 6, borderRadius: "var(--qg-radius-md)", display: "flex", color: "var(--qg-text-3)", textDecoration: "none", transition: "var(--qg-ease)" }}
+          >
+            <Bell size={16} />
+            {unreadCount > 0 && (
+              <span style={{
+                position: "absolute", top: 1, right: 1,
+                width: 14, height: 14,
+                background: "var(--qg-red)",
+                borderRadius: "50%",
+                color: "#fff",
+                fontSize: 8,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 800,
+              }}>
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Link>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main style={{ flex: 1, overflowY: "auto", padding: 24, background: "var(--qg-bg)" }}>
           {children}
         </main>
       </div>

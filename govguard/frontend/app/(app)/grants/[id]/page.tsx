@@ -9,34 +9,32 @@ import {
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
-const FLAG_CONFIG: Record<string, { label: string; color: string }> = {
-  pending:    { label: "Pending",    color: "bg-gray-100 text-gray-600 border-gray-200" },
-  clear:      { label: "Clear",      color: "bg-green-50 text-green-700 border-green-200" },
-  flagged:    { label: "Flagged",    color: "bg-red-50 text-red-700 border-red-200" },
-  approved:   { label: "Approved",   color: "bg-blue-50 text-blue-700 border-blue-200" },
-  rejected:   { label: "Rejected",   color: "bg-orange-50 text-orange-700 border-orange-200" },
-  suppressed: { label: "Duplicate",  color: "bg-purple-50 text-purple-700 border-purple-200" },
+const FLAG_CONFIG: Record<string, { label: string; badgeClass: string }> = {
+  pending:    { label: "Pending",   badgeClass: "qg-badge-muted" },
+  clear:      { label: "Clear",     badgeClass: "qg-badge-low" },
+  flagged:    { label: "Flagged",   badgeClass: "qg-badge-critical" },
+  approved:   { label: "Approved",  badgeClass: "qg-badge-gold" },
+  rejected:   { label: "Rejected",  badgeClass: "qg-badge-high" },
+  suppressed: { label: "Duplicate", badgeClass: "qg-badge-medium" },
 };
 
-function Badge({ status }: { status: string }) {
+function StatusBadge({ status }: { status: string }) {
   const cfg = FLAG_CONFIG[status] || FLAG_CONFIG.pending;
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cfg.color}`}>
-      {cfg.label}
-    </span>
-  );
+  return <span className={`qg-badge ${cfg.badgeClass}`}>{cfg.label}</span>;
 }
 
 function RiskBar({ score }: { score: number | null }) {
-  if (score === null || score === undefined) return <span className="text-xs text-gray-400">—</span>;
+  if (score === null || score === undefined) {
+    return <span style={{ fontSize: 11, color: "var(--qg-text-4)" }}>—</span>;
+  }
   const n = Number(score);
-  const color = n >= 75 ? "bg-red-500" : n >= 40 ? "bg-amber-500" : "bg-green-500";
+  const color = n >= 75 ? "var(--qg-red)" : n >= 40 ? "var(--qg-yellow)" : "var(--qg-green)";
   return (
-    <div className="flex items-center gap-2 min-w-[80px]">
-      <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-        <div className={`${color} h-1.5 rounded-full`} style={{ width: `${n}%` }} />
+    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 80 }}>
+      <div style={{ flex: 1, background: "var(--qg-surface-2)", borderRadius: 100, height: 3 }}>
+        <div style={{ background: color, height: 3, borderRadius: 100, width: `${n}%` }} />
       </div>
-      <span className="text-xs font-medium text-gray-600 w-6">{Math.round(n)}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--qg-text-3)", width: 22 }}>{Math.round(n)}</span>
     </div>
   );
 }
@@ -53,35 +51,41 @@ function AISection({
 }) {
   const [open, setOpen] = useState(false);
 
-  const handleRun = () => {
-    onRun();
-    setOpen(true);
-  };
+  const handleRun = () => { onRun(); setOpen(true); };
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50">
-        <div className="flex items-center gap-2">
-          <Icon className="w-4 h-4 text-[#1F3864]" />
-          <span className="text-sm font-semibold text-gray-800">{title}</span>
+    <div style={{ border: "1px solid var(--qg-border)", borderRadius: "var(--qg-radius-lg)", overflow: "hidden" }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "10px 14px", background: "var(--qg-surface-2)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Icon size={13} color="var(--qg-gold)" />
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--qg-text-1)" }}>{title}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             onClick={handleRun}
             disabled={loading}
-            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#1F3864] text-white hover:bg-[#2E75B6] transition-colors disabled:opacity-50"
+            className="qg-btn qg-btn-primary qg-btn-sm"
+            style={{ padding: "4px 12px", fontSize: 11 }}
           >
             {loading ? "Running…" : "Run"}
           </button>
           {result && (
-            <button onClick={() => setOpen(v => !v)} className="text-gray-400 hover:text-gray-600">
-              {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <button
+              onClick={() => setOpen(v => !v)}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--qg-text-4)", display: "flex" }}
+            >
+              {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             </button>
           )}
         </div>
       </div>
       {open && result && (
-        <div className="p-4 bg-white text-sm">{children(result)}</div>
+        <div style={{ padding: 14, background: "var(--qg-surface)", fontSize: 12, color: "var(--qg-text-2)" }}>
+          {children(result)}
+        </div>
       )}
     </div>
   );
@@ -96,12 +100,9 @@ function TxFraudButton({ txId }: { txId: string }) {
     setLoading(true);
     try {
       const res = await fetch(`/api/v2/fraud/assess/${txId}`, { method: "POST" });
-      const json = await res.json();
-      setData(json);
+      setData(await res.json());
       setOpen(true);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const assessment = data?.assessment as Record<string, unknown> | undefined;
@@ -111,42 +112,49 @@ function TxFraudButton({ txId }: { txId: string }) {
       <button
         onClick={run}
         disabled={loading}
-        className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-40"
+        style={{ fontSize: 11, color: "var(--qg-gold)", background: "none", border: "none", cursor: "pointer", fontWeight: 600, opacity: loading ? 0.4 : 1 }}
       >
         {loading ? "…" : "Assess"}
       </button>
       {open && assessment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900">Fraud Assessment</h3>
-              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--qg-overlay)", padding: 24 }}
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="qg-card"
+            style={{ width: "100%", maxWidth: 480, padding: 24 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--qg-text-1)" }}>Fraud Assessment</h3>
+              <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--qg-text-4)", fontSize: 18, lineHeight: 1 }}>×</button>
             </div>
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500">Composite Score</span>
-                <span className="font-bold text-lg">{Number(assessment.composite_score ?? 0).toFixed(1)}/100</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "var(--qg-text-3)" }}>Composite Score</span>
+                <span style={{ fontWeight: 800, fontSize: 16, color: "var(--qg-text-1)" }}>
+                  {Number(assessment.composite_score ?? 0).toFixed(1)}/100
+                </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500">Risk Tier</span>
-                <Badge status={String(assessment.risk_tier ?? "").toLowerCase() === "critical" ? "flagged" : String(assessment.risk_tier ?? "").toLowerCase() === "high" ? "flagged" : "pending"} />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500">Recommended Action</span>
-                <span className="font-medium">{String(assessment.recommended_action ?? "—")}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "var(--qg-text-3)" }}>Recommended Action</span>
+                <span style={{ fontWeight: 600, color: "var(--qg-text-1)" }}>{String(assessment.recommended_action ?? "—")}</span>
               </div>
               {Array.isArray(assessment.triggered_rules) && assessment.triggered_rules.length > 0 && (
                 <div>
-                  <p className="text-gray-500 mb-1">Triggered Rules</p>
-                  <div className="flex flex-wrap gap-1">
+                  <p style={{ color: "var(--qg-text-4)", marginBottom: 6 }}>Triggered Rules</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {(assessment.triggered_rules as string[]).map(r => (
-                      <span key={r} className="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded text-xs">{r}</span>
+                      <span key={r} className="qg-badge qg-badge-critical">{r}</span>
                     ))}
                   </div>
                 </div>
               )}
               {!!assessment.explanation && (
-                <p className="text-gray-600 bg-gray-50 p-3 rounded-lg">{String(assessment.explanation)}</p>
+                <p style={{ color: "var(--qg-text-3)", background: "var(--qg-surface-2)", padding: 10, borderRadius: "var(--qg-radius-md)" }}>
+                  {String(assessment.explanation)}
+                </p>
               )}
             </div>
           </div>
@@ -170,32 +178,32 @@ function LabelButton({ txId, onLabeled }: { txId: string; onLabeled: () => void 
       });
       setDone(confirmed_fraud);
       onLabeled();
-    } finally {
-      setSaving(null);
-    }
+    } finally { setSaving(null); }
   };
 
   if (done !== null) {
     return (
-      <span className={`text-xs font-medium ${done ? "text-red-600" : "text-green-600"}`}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: done ? "var(--qg-red)" : "var(--qg-green)" }}>
         {done ? "Confirmed fraud" : "Confirmed clean"}
       </span>
     );
   }
 
   return (
-    <div className="flex gap-1">
+    <div style={{ display: "flex", gap: 4 }}>
       <button
         onClick={() => submit(true)}
         disabled={!!saving}
-        className="text-xs px-2 py-0.5 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-40"
+        className="qg-badge qg-badge-critical"
+        style={{ cursor: "pointer", border: "1px solid var(--qg-red-border)" }}
       >
         {saving === "fraud" ? "…" : "Fraud"}
       </button>
       <button
         onClick={() => submit(false)}
         disabled={!!saving}
-        className="text-xs px-2 py-0.5 rounded border border-green-300 text-green-600 hover:bg-green-50 disabled:opacity-40"
+        className="qg-badge qg-badge-low"
+        style={{ cursor: "pointer", border: "1px solid var(--qg-green-border)" }}
       >
         {saving === "clean" ? "…" : "Clean"}
       </button>
@@ -207,14 +215,14 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
   const { id } = params;
   const { data, isLoading, mutate } = useSWR(`/api/v1/grants/${id}`, fetcher);
 
-  const [fraudResult, setFraudResult]       = useState<object | null>(null);
-  const [fraudLoading, setFraudLoading]     = useState(false);
-  const [anomalyResult, setAnomalyResult]   = useState<object | null>(null);
+  const [fraudResult, setFraudResult]     = useState<object | null>(null);
+  const [fraudLoading, setFraudLoading]   = useState(false);
+  const [anomalyResult, setAnomalyResult] = useState<object | null>(null);
   const [anomalyLoading, setAnomalyLoading] = useState(false);
-  const [compResult, setCompResult]         = useState<object | null>(null);
-  const [compLoading, setCompLoading]       = useState(false);
-  const [riskResult, setRiskResult]         = useState<object | null>(null);
-  const [riskLoading, setRiskLoading]       = useState(false);
+  const [compResult, setCompResult]       = useState<object | null>(null);
+  const [compLoading, setCompLoading]     = useState(false);
+  const [riskResult, setRiskResult]       = useState<object | null>(null);
+  const [riskLoading, setRiskLoading]     = useState(false);
 
   const runFraudScan = async () => {
     setFraudLoading(true);
@@ -242,8 +250,7 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
         tx_date: latestTx.tx_date,
       } : {};
       const res = await fetch(`/api/v2/anomaly/detect/${id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(txBody),
       });
       setAnomalyResult(await res.json());
@@ -268,19 +275,21 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
 
   if (isLoading) {
     return (
-      <div className="space-y-4 animate-pulse">
-        <div className="h-8 w-48 bg-gray-200 rounded" />
-        <div className="h-32 bg-gray-100 rounded-xl" />
-        <div className="h-64 bg-gray-100 rounded-xl" />
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {[...Array(3)].map((_, i) => (
+          <div key={i} style={{ height: i === 0 ? 40 : i === 1 ? 120 : 240, background: "var(--qg-surface)", borderRadius: "var(--qg-radius-xl)", border: "1px solid var(--qg-border)", opacity: 0.6 }} />
+        ))}
       </div>
     );
   }
 
   if (!data?.grant) {
     return (
-      <div className="text-center py-16">
-        <p className="text-gray-500">Grant not found.</p>
-        <Link href="/grants" className="text-blue-600 hover:underline text-sm mt-2 block">← Back to grants</Link>
+      <div style={{ textAlign: "center", padding: "64px 0" }}>
+        <p style={{ color: "var(--qg-text-3)", fontSize: 13 }}>Grant not found.</p>
+        <Link href="/grants" style={{ color: "var(--qg-gold)", fontSize: 12, marginTop: 8, display: "block", textDecoration: "none" }}>
+          ← Back to grants
+        </Link>
       </div>
     );
   }
@@ -292,88 +301,100 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
   };
 
   const compliance = Number(grant.compliance_score ?? 0);
-  const compColor = compliance >= 80 ? "text-green-600" : compliance >= 60 ? "text-amber-600" : "text-red-600";
+  const compColor = compliance >= 80 ? "var(--qg-green)" : compliance >= 60 ? "var(--qg-yellow)" : "var(--qg-red)";
 
   return (
-    <div className="space-y-6">
+    <div className="qg-animate-in" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Header */}
       <div>
-        <Link href="/grants" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-3">
-          <ArrowLeft className="w-4 h-4" /> Back to Grants
+        <Link
+          href="/grants"
+          style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--qg-text-4)", textDecoration: "none", marginBottom: 12, transition: "var(--qg-ease)" }}
+        >
+          <ArrowLeft size={12} /> Back to Grants
         </Link>
-        <div className="flex items-start justify-between">
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{String(grant.award_number)}</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{String(grant.agency)}</p>
+            <h1 className="qg-title">{String(grant.award_number)}</h1>
+            <p style={{ fontSize: 12, color: "var(--qg-text-4)", marginTop: 3 }}>{String(grant.agency)}</p>
           </div>
-          <Badge status={String(grant.status)} />
+          <StatusBadge status={String(grant.status)} />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stat tiles */}
+      <div className="qg-grid-4">
         {[
-          { label: "Total Award",      value: `$${Number(grant.total_amount).toLocaleString()}`,      icon: FileText,      color: "bg-blue-50 border-blue-200" },
-          { label: "Compliance Score", value: `${compliance.toFixed(0)}/100`,                         icon: CheckCircle2,  color: "bg-green-50 border-green-200", valueColor: compColor },
-          { label: "Flagged Tx",       value: String(stats?.flagged ?? 0),                            icon: AlertTriangle, color: "bg-red-50 border-red-200" },
-          { label: "Total Spend",      value: `$${Number(stats?.total_spend ?? 0).toLocaleString()}`, icon: Clock,         color: "bg-gray-50 border-gray-200" },
-        ].map(({ label, value, icon: Icon, color, valueColor }) => (
-          <div key={label} className={`rounded-xl border p-4 ${color}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <Icon className="w-4 h-4 text-gray-500" />
-              <span className="text-xs text-gray-500 font-medium">{label}</span>
+          { label: "Total Award",      value: `$${Number(grant.total_amount).toLocaleString()}`, icon: FileText,     color: "var(--qg-gold)" },
+          { label: "Compliance Score", value: `${compliance.toFixed(0)}/100`,                    icon: CheckCircle2, color: compColor },
+          { label: "Flagged Tx",       value: String(stats?.flagged ?? 0),                       icon: AlertTriangle,color: "var(--qg-red)" },
+          { label: "Total Spend",      value: `$${Number(stats?.total_spend ?? 0).toLocaleString()}`, icon: Clock,   color: "var(--qg-text-2)" },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <div key={label} className="qg-card" style={{ padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <Icon size={13} color={color} />
+              <span style={{ fontSize: 10, color: "var(--qg-text-4)", fontWeight: 600 }}>{label}</span>
             </div>
-            <p className={`text-xl font-bold ${valueColor || "text-gray-900"}`}>{value}</p>
+            <p style={{ fontSize: 18, fontWeight: 800, color, letterSpacing: "-0.3px" }}>{value}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 bg-white rounded-xl border border-gray-200">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Transactions</h2>
-            <span className="text-xs text-gray-400">{transactions.length} total</span>
+      {/* Transactions + AI */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20 }}>
+        {/* Transactions table */}
+        <div className="qg-card" style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{
+            padding: "14px 20px", borderBottom: "1px solid var(--qg-border)",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--qg-text-1)" }}>Transactions</h2>
+            <span style={{ fontSize: 11, color: "var(--qg-text-4)" }}>{transactions.length} total</span>
           </div>
 
           {transactions.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <FileText className="w-8 h-8 mx-auto mb-2" />
-              <p className="text-sm">No transactions yet</p>
+            <div style={{ textAlign: "center", padding: "48px 0", color: "var(--qg-text-4)" }}>
+              <FileText size={24} style={{ margin: "0 auto 8px", display: "block" }} />
+              <p style={{ fontSize: 12 }}>No transactions yet</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div style={{ overflowX: "auto" }}>
+              <table className="qg-table">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Invoice</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Vendor</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase">Risk</th>
-                    <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase">Label</th>
-                    <th className="px-4 py-3" />
+                  <tr>
+                    <th>Date</th>
+                    <th>Invoice</th>
+                    <th>Vendor</th>
+                    <th style={{ textAlign: "right" }}>Amount</th>
+                    <th style={{ textAlign: "center" }}>Risk</th>
+                    <th style={{ textAlign: "center" }}>Status</th>
+                    <th style={{ textAlign: "center" }}>Label</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
                   {transactions.map((tx) => (
-                    <tr key={String(tx.id)} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-gray-600">{String(tx.tx_date ?? "").slice(0, 10)}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-gray-700">{String(tx.invoice_ref)}</td>
-                      <td className="px-4 py-3 text-gray-700 max-w-[140px] truncate">{String(tx.vendor_name ?? "—")}</td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-900">
+                    <tr key={String(tx.id)}>
+                      <td style={{ fontSize: 12 }}>{String(tx.tx_date ?? "").slice(0, 10)}</td>
+                      <td style={{ fontFamily: "monospace", fontSize: 11 }}>{String(tx.invoice_ref)}</td>
+                      <td style={{ maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>
+                        {String(tx.vendor_name ?? "—")}
+                      </td>
+                      <td style={{ textAlign: "right", fontWeight: 600, color: "var(--qg-text-1)", fontSize: 12 }}>
                         ${Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="px-4 py-3">
+                      <td style={{ textAlign: "center" }}>
                         <RiskBar score={tx.risk_score as number | null} />
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge status={String(tx.flag_status)} />
+                      <td style={{ textAlign: "center" }}>
+                        <StatusBadge status={String(tx.flag_status)} />
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td style={{ textAlign: "center" }}>
                         {String(tx.flag_status) === "flagged" && (
                           <LabelButton txId={String(tx.id)} onLabeled={() => mutate()} />
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td style={{ textAlign: "center" }}>
                         <TxFraudButton txId={String(tx.id)} />
                       </td>
                     </tr>
@@ -384,24 +405,35 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
           )}
         </div>
 
-        <div className="space-y-3">
-          <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-[#1F3864]" /> AI Intelligence
+        {/* AI Intelligence panel */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--qg-text-1)", display: "flex", alignItems: "center", gap: 7 }}>
+            <Zap size={13} color="var(--qg-gold)" /> AI Intelligence
           </h2>
 
           <AISection title="Risk Prediction" icon={TrendingUp} onRun={runRisk} result={riskResult} loading={riskLoading}>
             {(d) => {
               const r = d as Record<string, unknown>;
               return (
-                <div className="space-y-2">
-                  <div className="flex justify-between"><span className="text-gray-500">Predicted Risk</span><span className="font-bold">{Number(r.predicted_risk_score ?? 0).toFixed(1)}/100</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Trend</span><span className="font-medium capitalize">{String(r.trend ?? "—")}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Confidence</span><span className="font-medium">{(Number(r.confidence ?? 0) * 100).toFixed(0)}%</span></div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "var(--qg-text-4)" }}>Predicted Risk</span>
+                    <span style={{ fontWeight: 800, color: "var(--qg-text-1)" }}>{Number(r.predicted_risk_score ?? 0).toFixed(1)}/100</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "var(--qg-text-4)" }}>Trend</span>
+                    <span style={{ fontWeight: 600, textTransform: "capitalize", color: "var(--qg-text-2)" }}>{String(r.trend ?? "—")}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "var(--qg-text-4)" }}>Confidence</span>
+                    <span style={{ fontWeight: 600, color: "var(--qg-text-2)" }}>{(Number(r.confidence ?? 0) * 100).toFixed(0)}%</span>
+                  </div>
                   {Array.isArray(r.risk_drivers) && r.risk_drivers.length > 0 && (
-                    <div><p className="text-gray-500 mb-1">Top Drivers</p>
+                    <div style={{ marginTop: 4 }}>
+                      <p style={{ color: "var(--qg-text-4)", marginBottom: 5, fontSize: 10 }}>Top Drivers</p>
                       {(r.risk_drivers as { factor: string; contribution: number }[]).slice(0, 3).map((drv) => (
-                        <p key={drv.factor} className="text-xs bg-amber-50 text-amber-800 p-1.5 rounded mb-1">
-                          {drv.factor.replace(/_/g, " ")} <span className="font-semibold">(+{drv.contribution})</span>
+                        <p key={drv.factor} style={{ fontSize: 11, background: "var(--qg-yellow-bg)", color: "var(--qg-yellow)", padding: "4px 8px", borderRadius: "var(--qg-radius-sm)", marginBottom: 3 }}>
+                          {drv.factor.replace(/_/g, " ")} <strong>(+{drv.contribution})</strong>
                         </p>
                       ))}
                     </div>
@@ -415,9 +447,12 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
             {(d) => {
               const r = d as Record<string, unknown>;
               return (
-                <div className="space-y-2">
-                  <div className="flex justify-between"><span className="text-gray-500">Queued</span><span className="font-bold">{String(r.transactions_queued ?? 0)}</span></div>
-                  <p className="text-xs text-gray-500">{String(r.message ?? "")}</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "var(--qg-text-4)" }}>Queued</span>
+                    <span style={{ fontWeight: 800, color: "var(--qg-text-1)" }}>{String(r.transactions_queued ?? 0)}</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: "var(--qg-text-4)" }}>{String(r.message ?? "")}</p>
                 </div>
               );
             }}
@@ -428,12 +463,15 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
               const r = d as Record<string, unknown>;
               const alerts = (r.alerts ?? []) as Record<string, unknown>[];
               return (
-                <div className="space-y-2">
-                  <div className="flex justify-between"><span className="text-gray-500">Alerts</span><span className="font-bold">{String(r.alert_count ?? 0)}</span></div>
-                  {alerts.slice(0, 5).map((a, i) => (
-                    <div key={i} className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs">
-                      <p className="font-medium text-amber-800">{String(a.type ?? "")}</p>
-                      <p className="text-amber-700 mt-0.5">{String(a.description ?? "")}</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "var(--qg-text-4)" }}>Alerts</span>
+                    <span style={{ fontWeight: 800, color: "var(--qg-text-1)" }}>{String(r.alert_count ?? 0)}</span>
+                  </div>
+                  {alerts.slice(0, 4).map((a, i) => (
+                    <div key={i} style={{ background: "var(--qg-yellow-bg)", border: "1px solid var(--qg-yellow-border)", borderRadius: "var(--qg-radius-sm)", padding: "6px 8px", fontSize: 11 }}>
+                      <p style={{ fontWeight: 700, color: "var(--qg-yellow)" }}>{String(a.type ?? "")}</p>
+                      <p style={{ color: "var(--qg-text-3)", marginTop: 2 }}>{String(a.description ?? "")}</p>
                     </div>
                   ))}
                 </div>
@@ -446,14 +484,20 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
               const r = d as Record<string, unknown>;
               const violations = (r.violations ?? []) as Record<string, unknown>[];
               return (
-                <div className="space-y-2">
-                  <div className="flex justify-between"><span className="text-gray-500">Violations</span><span className="font-bold">{String(r.violation_count ?? 0)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Auto-CAPs</span><span className="font-medium">{String(r.auto_caps_created ?? 0)}</span></div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "var(--qg-text-4)" }}>Violations</span>
+                    <span style={{ fontWeight: 800, color: "var(--qg-text-1)" }}>{String(r.violation_count ?? 0)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "var(--qg-text-4)" }}>Auto-CAPs</span>
+                    <span style={{ fontWeight: 600, color: "var(--qg-text-2)" }}>{String(r.auto_caps_created ?? 0)}</span>
+                  </div>
                   {violations.slice(0, 4).map((v, i) => (
-                    <div key={i} className="bg-red-50 border border-red-100 rounded-lg p-2 text-xs">
-                      <p className="font-medium text-red-800">{String(v.title ?? v.rule_id ?? "")}</p>
-                      <p className="text-gray-500 mt-0.5">{String(v.cfr_citation ?? "")} {String(v.severity ?? "")}</p>
-                      <p className="text-red-700 mt-0.5">{String(v.recommended_remediation ?? "")}</p>
+                    <div key={i} style={{ background: "var(--qg-red-bg)", border: "1px solid var(--qg-red-border)", borderRadius: "var(--qg-radius-sm)", padding: "6px 8px", fontSize: 11 }}>
+                      <p style={{ fontWeight: 700, color: "var(--qg-red)" }}>{String(v.title ?? v.rule_id ?? "")}</p>
+                      <p style={{ color: "var(--qg-text-4)", marginTop: 2 }}>{String(v.cfr_citation ?? "")} {String(v.severity ?? "")}</p>
+                      <p style={{ color: "var(--qg-red)", marginTop: 2, opacity: 0.8 }}>{String(v.recommended_remediation ?? "")}</p>
                     </div>
                   ))}
                 </div>

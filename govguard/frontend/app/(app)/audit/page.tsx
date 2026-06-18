@@ -34,76 +34,97 @@ export default function AuditPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="qg-animate-in" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Audit & CAP Workspace</h1>
-          <p className="text-sm text-gray-500 mt-1">Corrective Action Plans & evidence management</p>
+          <span className="qg-section-label-badge" style={{ marginBottom: 8, display: "inline-block" }}>Audit</span>
+          <h1 className="qg-title" style={{ marginTop: 8 }}>Audit & CAP Workspace</h1>
+          <p className="qg-subtitle" style={{ marginTop: 4 }}>Corrective Action Plans & evidence management</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-[#1F3864] hover:bg-[#2E75B6] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          <Plus className="w-4 h-4" /> New CAP
+        <button onClick={() => setShowForm(!showForm)} className="qg-btn qg-btn-primary qg-btn-sm">
+          <Plus size={13} /> New CAP
         </button>
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Create Corrective Action Plan</h3>
-          <form onSubmit={onSubmit} className="space-y-4">
+        <div className="qg-card qg-animate-in">
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--qg-text-1)", marginBottom: 16 }}>Create Corrective Action Plan</h3>
+          <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Response / Corrective Action</label>
-              <textarea rows={4} value={formData.response_text}
+              <label className="qg-label-text">Response / Corrective Action</label>
+              <textarea
+                rows={4}
+                value={formData.response_text}
                 onChange={e => setFormData(p => ({ ...p, response_text: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Describe the corrective action and responsible party..." required />
+                className="qg-input"
+                style={{ resize: "vertical" }}
+                placeholder="Describe the corrective action and responsible party..."
+                required
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Target Completion Date</label>
-              <input type="date" value={formData.due_date}
+              <label className="qg-label-text">Target Completion Date</label>
+              <input
+                type="date"
+                value={formData.due_date}
                 onChange={e => setFormData(p => ({ ...p, due_date: e.target.value }))}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+                className="qg-input"
+                style={{ width: "auto" }}
+                required
+              />
             </div>
-            <div className="flex gap-3">
-              <button type="submit" disabled={isCreating}
-                className="bg-[#1F3864] text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-[#2E75B6] disabled:opacity-50 transition-colors">
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="submit" disabled={isCreating} className="qg-btn qg-btn-primary qg-btn-sm">
                 {isCreating ? "Saving…" : "Create CAP"}
               </button>
-              <button type="button" onClick={() => setShowForm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={() => setShowForm(false)} className="qg-btn qg-btn-secondary qg-btn-sm">
+                Cancel
+              </button>
             </div>
           </form>
         </div>
       )}
 
       {caps.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <ClipboardCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p className="font-medium text-gray-700 mb-1">No corrective action plans</p>
-          <p className="text-sm text-gray-500">Create CAPs to track remediation of audit findings.</p>
+        <div className="qg-card" style={{ textAlign: "center", padding: "64px 24px" }}>
+          <ClipboardCheck size={36} color="var(--qg-text-4)" style={{ margin: "0 auto 12px", display: "block" }} />
+          <p style={{ fontWeight: 700, color: "var(--qg-text-1)", marginBottom: 6, fontSize: 14 }}>No corrective action plans</p>
+          <p style={{ fontSize: 12, color: "var(--qg-text-4)" }}>Create CAPs to track remediation of audit findings.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {caps.map((cap: Record<string, unknown>) => {
             const daysLeft = getDaysLeft(String(cap.due_date));
             const isOverdue = daysLeft < 0;
             const isUrgent = daysLeft >= 0 && daysLeft <= 30;
+            const borderColor = isOverdue ? "var(--qg-red-border)" : isUrgent ? "var(--qg-orange-border)" : "var(--qg-border)";
             return (
-              <div key={String(cap.id)} className={"bg-white rounded-xl border p-5 " + (isOverdue ? "border-red-300" : isUrgent ? "border-amber-300" : "border-gray-200")}>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 line-clamp-2">{String(cap.response_text)}</p>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                      <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Due: {String(cap.due_date)}</span>
+              <div key={String(cap.id)} className="qg-card" style={{ borderColor, padding: "16px 20px" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: "var(--qg-text-1)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                      {String(cap.response_text)}
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 8 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--qg-text-4)" }}>
+                        <Calendar size={11} /> Due: {String(cap.due_date)}
+                      </span>
                       {isOverdue ? (
-                        <span className="text-red-600 font-medium flex items-center gap-1"><AlertTriangle className="w-3 h-3" />OVERDUE by {Math.abs(daysLeft)} days</span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--qg-red)", fontWeight: 600 }}>
+                          <AlertTriangle size={11} /> OVERDUE by {Math.abs(daysLeft)} days
+                        </span>
                       ) : (
-                        <span className={isUrgent ? "text-amber-600 font-medium" : ""}>{daysLeft} days remaining</span>
+                        <span style={{ fontSize: 11, color: isUrgent ? "var(--qg-orange)" : "var(--qg-text-4)", fontWeight: isUrgent ? 600 : 400 }}>
+                          {daysLeft} days remaining
+                        </span>
                       )}
                     </div>
                   </div>
-                  <span className={"text-xs font-medium px-2 py-1 rounded-full capitalize " +
-                    (cap.status === "closed" ? "bg-green-100 text-green-700" :
-                     cap.status === "open" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700")}>
+                  <span className={`qg-badge ${
+                    cap.status === "closed" ? "qg-badge-low" :
+                    cap.status === "open"   ? "qg-badge-medium" :
+                    "qg-badge-gold"
+                  }`} style={{ textTransform: "capitalize", marginLeft: 12 }}>
                     {String(cap.status)}
                   </span>
                 </div>

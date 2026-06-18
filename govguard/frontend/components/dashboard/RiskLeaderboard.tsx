@@ -10,55 +10,63 @@ interface LeaderboardItem {
 }
 
 function ScoreBar({ score }: { score: number }) {
-  const color = score >= 80 ? "bg-green-500" : score >= 60 ? "bg-amber-500" : "bg-red-500";
+  const color = score >= 80 ? "var(--qg-green)" : score >= 60 ? "var(--qg-yellow)" : "var(--qg-red)";
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 bg-gray-200 rounded-full h-2">
-        <div className={`${color} h-2 rounded-full transition-all`} style={{ width: `${score}%` }} />
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+      <div style={{ flex: 1, background: "var(--qg-surface-2)", borderRadius: 100, height: 3 }}>
+        <div style={{ background: color, height: 3, borderRadius: 100, width: `${score}%`, transition: "width 0.6s ease" }} />
       </div>
-      <span className="text-sm font-medium text-gray-700 w-10 text-right">{score}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--qg-text-3)", width: 26, textAlign: "right" }}>{score}</span>
     </div>
   );
 }
 
-export function RiskLeaderboard({
-  leaderboard,
-  loading,
-}: {
-  leaderboard: LeaderboardItem[];
-  loading: boolean;
-}) {
+export function RiskLeaderboard({ leaderboard, loading }: { leaderboard: LeaderboardItem[]; loading: boolean }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Risk Leaderboard</h3>
-        <span className="text-xs text-gray-500">Lowest scoring grants</span>
+    <div className="qg-card" style={{ padding: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--qg-text-1)" }}>Risk Leaderboard</h3>
+        <span className="qg-badge qg-badge-muted">Lowest scoring</span>
       </div>
 
       {loading ? (
-        <div className="space-y-3 animate-pulse">
-          {[...Array(5)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded" />)}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} style={{ height: 42, background: "var(--qg-surface-2)", borderRadius: "var(--qg-radius-md)", opacity: 0.6 }} />
+          ))}
         </div>
       ) : leaderboard.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 text-sm">
-          <AlertCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-          No active grants found
+        <div style={{ textAlign: "center", padding: "32px 0", color: "var(--qg-text-4)" }}>
+          <AlertCircle size={28} style={{ margin: "0 auto 10px", display: "block" }} />
+          <p style={{ fontSize: 13 }}>No active grants found</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {leaderboard.map((item, idx) => (
             <Link
               key={item.grantId}
               href={`/grants/${item.grantId}/compliance`}
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "9px 10px",
+                borderRadius: "var(--qg-radius-md)",
+                textDecoration: "none",
+                transition: "var(--qg-ease)",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "var(--qg-surface-2)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
-              <span className="text-sm font-bold text-gray-400 w-5">{idx + 1}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{item.awardNumber}</p>
-                <p className="text-xs text-gray-500 truncate">{item.agency}</p>
+              <span style={{ fontSize: 10, fontWeight: 800, color: "var(--qg-text-4)", width: 16, textAlign: "center" }}>{idx + 1}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--qg-text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {item.awardNumber}
+                </p>
+                <p style={{ fontSize: 11, color: "var(--qg-text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {item.agency}
+                </p>
                 <ScoreBar score={item.complianceScore} />
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0" />
+              <ArrowRight size={13} color="var(--qg-text-4)" />
             </Link>
           ))}
         </div>
