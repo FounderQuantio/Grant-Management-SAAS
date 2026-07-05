@@ -12,14 +12,14 @@ import type { CSSProperties } from "react";
 // ─── 1. COLOUR TOKENS ────────────────────────────────────────────────────────
 
 export const COLORS = {
-  gold:           "#C9A84C",
-  goldLight:      "#D4AA50",
-  goldDim:        "rgba(201,168,76,0.55)",
-  goldTint1:      "rgba(201,168,76,0.18)",
-  goldTint2:      "rgba(201,168,76,0.12)",
-  goldTint3:      "rgba(201,168,76,0.08)",
-  goldBorder:     "rgba(201,168,76,0.25)",
-  goldBorderH:    "rgba(201,168,76,0.45)",
+  gold:           "#ABABAB",
+  goldLight:      "#C2C2C2",
+  goldDim:        "rgba(171,171,171,0.55)",
+  goldTint1:      "rgba(171,171,171,0.18)",
+  goldTint2:      "rgba(171,171,171,0.12)",
+  goldTint3:      "rgba(171,171,171,0.08)",
+  goldBorder:     "rgba(171,171,171,0.25)",
+  goldBorderH:    "rgba(171,171,171,0.45)",
 
   bg:             "#141414",
   sidebar:        "#1A1A1A",
@@ -94,7 +94,7 @@ export const SHADOW = {
   sm:   "0 1px 3px rgba(0,0,0,0.30), 0 1px 2px rgba(0,0,0,0.20)",
   md:   "0 4px 12px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.20)",
   lg:   "0 20px 48px rgba(0,0,0,0.60), 0 8px 16px rgba(0,0,0,0.30)",
-  gold: "0 0 0 1px rgba(201,168,76,0.20), 0 20px 48px rgba(0,0,0,0.60)",
+  gold: "0 0 0 1px rgba(171,171,171,0.20), 0 20px 48px rgba(0,0,0,0.60)",
 };
 
 // ─── 6. MAIN TOKEN EXPORT (shorthand QT) ─────────────────────────────────────
@@ -203,7 +203,7 @@ export const QS: Record<string, CSSProperties> = {
 
   cardHover: {
     background: COLORS.surface2,
-    borderColor: "rgba(201,168,76,0.20)",
+    borderColor: "rgba(171,171,171,0.20)",
     boxShadow: SHADOW.gold,
     transform: "translateY(-4px)",
   },
@@ -213,7 +213,7 @@ export const QS: Record<string, CSSProperties> = {
     height: 44,
     borderRadius: RADIUS.lg,
     background: COLORS.goldTint2,
-    border: `1px solid rgba(201,168,76,0.22)`,
+    border: `1px solid rgba(171,171,171,0.22)`,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
