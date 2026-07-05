@@ -59,7 +59,7 @@ export default function NotificationsPage() {
                 style={{
                   display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px",
                   borderColor: !n.read ? "var(--qg-gold-border)" : "var(--qg-border)",
-                  background: !n.read ? "rgba(201,168,76,0.04)" : "var(--qg-surface)",
+                  background: !n.read ? "rgba(37,99,235,0.04)" : "var(--qg-surface)",
                 }}
               >
                 <div style={{ padding: 7, borderRadius: "var(--qg-radius-md)", background: cfg.bg, flexShrink: 0 }}>

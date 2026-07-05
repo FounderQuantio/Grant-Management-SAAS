@@ -14,7 +14,7 @@ export default function LoginPage() {
       {/* Background grid accent */}
       <div style={{
         position: "fixed", inset: 0, zIndex: 0,
-        backgroundImage: "radial-gradient(rgba(201,168,76,0.06) 1px, transparent 1px)",
+        backgroundImage: "radial-gradient(rgba(37,99,235,0.06) 1px, transparent 1px)",
         backgroundSize: "32px 32px",
         pointerEvents: "none",
       }} />

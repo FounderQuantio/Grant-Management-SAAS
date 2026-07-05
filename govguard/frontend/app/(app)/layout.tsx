@@ -8,7 +8,6 @@ import {
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useAlertStore } from "@/lib/stores/alerts";
 import { useAlertFeed } from "@/lib/hooks/useAlertFeed";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 const NAV_ITEMS = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard",    roles: [] },
@@ -121,7 +120,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           flexShrink: 0,
           gap: 10,
         }}>
-          <ThemeToggle />
           <Link
             href="/notifications"
             style={{ position: "relative", padding: 6, borderRadius: "var(--qg-radius-md)", display: "flex", color: "var(--qg-text-3)", textDecoration: "none", transition: "var(--qg-ease)" }}
