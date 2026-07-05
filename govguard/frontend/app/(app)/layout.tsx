@@ -49,7 +49,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "var(--qg-bg)", overflow: "hidden" }}>
+    <div style={{ display: "flex", height: "100%", background: "var(--qg-bg)", overflow: "hidden" }}>
       {/* Sidebar */}
       <aside className="qg-sidebar">
         <div className="qg-sidebar-header">
