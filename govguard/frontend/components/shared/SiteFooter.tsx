@@ -17,7 +17,7 @@ function FooterLink({ label }: { label: string }) {
 
 export default function SiteFooter() {
   return (
-    <footer style={{ background: "#F4F7FC", borderTop: "1px solid rgba(15,23,42,0.08)", padding: "40px 40px", flexShrink: 0 }}>
+    <footer style={{ background: "#F4F7FC", borderTop: "1px solid rgba(15,23,42,0.08)", padding: "20px 40px", flexShrink: 0 }}>
       <div style={{
         maxWidth: 1200, margin: "0 auto",
         display: "flex", justifyContent: "space-between", alignItems: "center",
