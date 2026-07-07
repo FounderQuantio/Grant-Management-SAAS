@@ -9,32 +9,32 @@
    -------------------------------------------------------------------------- */
 :root {
   /* Brand gold */
-  --qg-gold:            #5B7FA6;
-  --qg-gold-light:      #7295B8;
-  --qg-gold-dim:        rgba(91, 127, 166, 0.55);
-  --qg-gold-tint-1:     rgba(91, 127, 166, 0.12);
-  --qg-gold-tint-2:     rgba(91, 127, 166, 0.08);
-  --qg-gold-tint-3:     rgba(91, 127, 166, 0.05);
-  --qg-gold-border:     rgba(91, 127, 166, 0.28);
-  --qg-gold-border-h:   rgba(91, 127, 166, 0.45);
+  --qg-gold:            #6495ED;
+  --qg-gold-light:      #7FA6F0;
+  --qg-gold-dim:        rgba(100, 149, 237, 0.55);
+  --qg-gold-tint-1:     rgba(100, 149, 237, 0.12);
+  --qg-gold-tint-2:     rgba(100, 149, 237, 0.08);
+  --qg-gold-tint-3:     rgba(100, 149, 237, 0.05);
+  --qg-gold-border:     rgba(100, 149, 237, 0.28);
+  --qg-gold-border-h:   rgba(100, 149, 237, 0.45);
 
   /* Backgrounds */
-  --qg-bg:              #F4F7FC;   /* page background */
+  --qg-bg:              #F1EEEA;   /* page background */
   --qg-sidebar:         #FFFFFF;   /* sidebar / nav panel */
   --qg-surface:         #FFFFFF;   /* card surface */
-  --qg-surface-2:       #EEF2FA;   /* elevated card / hover state */
-  --qg-overlay:         rgba(15, 23, 42, 0.45);
+  --qg-surface-2:       #E8E2D8;   /* elevated card / hover state */
+  --qg-overlay:         rgba(33, 36, 39, 0.45);
 
   /* Borders */
-  --qg-border:          rgba(15, 23, 42, 0.08);
-  --qg-border-2:        rgba(15, 23, 42, 0.13);
-  --qg-border-strong:   rgba(15, 23, 42, 0.22);
+  --qg-border:          rgba(33, 36, 39, 0.08);
+  --qg-border-2:        rgba(33, 36, 39, 0.13);
+  --qg-border-strong:   rgba(33, 36, 39, 0.22);
 
   /* Text */
-  --qg-text-1:          #0F172A;
-  --qg-text-2:          rgba(15, 23, 42, 0.78);
-  --qg-text-3:          rgba(15, 23, 42, 0.50);
-  --qg-text-4:          rgba(15, 23, 42, 0.32);
+  --qg-text-1:          #212427;
+  --qg-text-2:          rgba(33, 36, 39, 0.78);
+  --qg-text-3:          rgba(33, 36, 39, 0.50);
+  --qg-text-4:          rgba(33, 36, 39, 0.32);
 
   /* Semantic colours */
   --qg-red:             #EF4444;
@@ -116,10 +116,10 @@
   /* --------------------------------------------------------------------------
      5. SHADOW TOKENS
      -------------------------------------------------------------------------- */
-  --qg-shadow-sm:  0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.05);
-  --qg-shadow-md:  0 4px 12px rgba(15,23,42,0.10), 0 2px 4px rgba(15,23,42,0.05);
-  --qg-shadow-lg:  0 20px 48px rgba(15,23,42,0.14), 0 8px 16px rgba(15,23,42,0.07);
-  --qg-shadow-gold: 0 0 0 1px rgba(91,127,166,0.20), 0 8px 24px rgba(15,23,42,0.10);
+  --qg-shadow-sm:  0 1px 3px rgba(33,36,39,0.08), 0 1px 2px rgba(33,36,39,0.05);
+  --qg-shadow-md:  0 4px 12px rgba(33,36,39,0.10), 0 2px 4px rgba(33,36,39,0.05);
+  --qg-shadow-lg:  0 20px 48px rgba(33,36,39,0.14), 0 8px 16px rgba(33,36,39,0.07);
+  --qg-shadow-gold: 0 0 0 1px rgba(100,149,237,0.20), 0 8px 24px rgba(33,36,39,0.10);
 
   /* --------------------------------------------------------------------------
      6. TRANSITION
@@ -131,13 +131,13 @@
      7. THEME-ADAPTIVE TOKENS
      -------------------------------------------------------------------------- */
   --qg-nav-bg:          rgba(255, 255, 255, 0.96);
-  --qg-hover-subtle:    rgba(15, 23, 42, 0.04);
-  --qg-btn-subtle:      rgba(15, 23, 42, 0.04);
-  --qg-stripe-bg:       rgba(15, 23, 42, 0.018);
-  --qg-sidebar-text:    rgba(15, 23, 42, 0.55);
-  --qg-sidebar-text-h:  rgba(15, 23, 42, 0.80);
-  --qg-group-label:     rgba(15, 23, 42, 0.25);
-  --qg-nav-link-text:   rgba(15, 23, 42, 0.65);
+  --qg-hover-subtle:    rgba(33, 36, 39, 0.04);
+  --qg-btn-subtle:      rgba(33, 36, 39, 0.04);
+  --qg-stripe-bg:       rgba(33, 36, 39, 0.018);
+  --qg-sidebar-text:    rgba(33, 36, 39, 0.55);
+  --qg-sidebar-text-h:  rgba(33, 36, 39, 0.80);
+  --qg-group-label:     rgba(33, 36, 39, 0.25);
+  --qg-nav-link-text:   rgba(33, 36, 39, 0.65);
 }
 
 /* --------------------------------------------------------------------------
@@ -182,6 +182,7 @@ input, textarea, select, button {
 }
 
 .qg-title {
+  font-family: var(--qg-font-display);
   font-size: var(--qg-text-2xl);
   font-weight: var(--qg-weight-extra);
   color: var(--qg-text-1);
@@ -304,8 +305,8 @@ input, textarea, select, button {
   text-decoration: none;
   padding: 7px 16px;
   border-radius: var(--qg-radius-pill);
-  background: rgba(15,23,42,0.04);
-  border: 1px solid rgba(15,23,42,0.07);
+  background: rgba(33,36,39,0.04);
+  border: 1px solid rgba(33,36,39,0.07);
   transition: var(--qg-ease);
 }
 
@@ -396,7 +397,7 @@ input, textarea, select, button {
 
 .qg-card:hover {
   background: var(--qg-surface-2);
-  border-color: rgba(91,127,166,0.20);
+  border-color: rgba(100,149,237,0.20);
   box-shadow: var(--qg-shadow-gold);
   transform: translateY(-4px);
 }
@@ -410,7 +411,7 @@ input, textarea, select, button {
   height: 44px;
   border-radius: var(--qg-radius-lg);
   background: var(--qg-gold-tint-2);
-  border: 1px solid rgba(91,127,166,0.22);
+  border: 1px solid rgba(100,149,237,0.22);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -423,7 +424,7 @@ input, textarea, select, button {
 
 .qg-card:hover .qg-card-icon {
   background: var(--qg-gold-tint-1);
-  border-color: rgba(91,127,166,0.45);
+  border-color: rgba(100,149,237,0.45);
 }
 
 .qg-card-arrow {
@@ -435,7 +436,7 @@ input, textarea, select, button {
   align-items: center;
   justify-content: center;
   font-size: 15px;
-  color: rgba(15,23,42,0.22);
+  color: rgba(33,36,39,0.22);
   flex-shrink: 0;
   transition: var(--qg-ease);
 }
@@ -455,7 +456,7 @@ input, textarea, select, button {
 
 .qg-card-desc {
   font-size: 12.5px;
-  color: rgba(15,23,42,0.45);
+  color: rgba(33,36,39,0.45);
   line-height: var(--qg-leading-loose);
 }
 
@@ -502,7 +503,7 @@ input, textarea, select, button {
 
 .qg-btn-primary:hover {
   background: var(--qg-gold-light);
-  box-shadow: 0 4px 20px rgba(91,127,166,0.35);
+  box-shadow: 0 4px 20px rgba(100,149,237,0.35);
   transform: translateY(-1px);
 }
 
@@ -513,7 +514,7 @@ input, textarea, select, button {
 }
 
 .qg-btn-secondary:hover {
-  background: rgba(15,23,42,0.10);
+  background: rgba(33,36,39,0.10);
   border-color: var(--qg-border-strong);
 }
 
@@ -593,7 +594,7 @@ input, textarea, select, button {
 }
 
 .qg-pill:hover {
-  background: rgba(15,23,42,0.10);
+  background: rgba(33,36,39,0.10);
   color: var(--qg-text-1);
 }
 
@@ -695,7 +696,7 @@ input, textarea, select, button {
 .qg-badge-medium   { background: var(--qg-yellow-bg); color: var(--qg-yellow); border: 1px solid var(--qg-yellow-border); }
 .qg-badge-low      { background: var(--qg-green-bg);  color: var(--qg-green);  border: 1px solid var(--qg-green-border); }
 .qg-badge-gold     { background: var(--qg-gold-tint-2); color: var(--qg-gold); border: 1px solid var(--qg-gold-border); }
-.qg-badge-muted    { background: rgba(15,23,42,0.06); color: var(--qg-text-3); border: 1px solid var(--qg-border); }
+.qg-badge-muted    { background: rgba(33,36,39,0.06); color: var(--qg-text-3); border: 1px solid var(--qg-border); }
 
 /* --------------------------------------------------------------------------
    18. SECTION HEADERS (page-level)
@@ -738,11 +739,11 @@ input, textarea, select, button {
    -------------------------------------------------------------------------- */
 ::-webkit-scrollbar          { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track    { background: transparent; }
-::-webkit-scrollbar-thumb    { background: rgba(15,23,42,0.12); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(91,127,166,0.40); }
+::-webkit-scrollbar-thumb    { background: rgba(33,36,39,0.12); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100,149,237,0.40); }
 
 [data-theme="light"] ::-webkit-scrollbar-thumb    { background: rgba(0,0,0,0.14); }
-[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(91,127,166,0.55); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(100,149,237,0.55); }
 
 /* --------------------------------------------------------------------------
    21. FOCUS RING (accessibility)
@@ -770,8 +771,8 @@ input, textarea, select, button {
 }
 
 @keyframes qg-pulse-gold {
-  0%, 100% { box-shadow: 0 0 0 0   rgba(91,127,166,0.40); }
-  50%       { box-shadow: 0 0 0 8px rgba(91,127,166,0.00); }
+  0%, 100% { box-shadow: 0 0 0 0   rgba(100,149,237,0.40); }
+  50%       { box-shadow: 0 0 0 8px rgba(100,149,237,0.00); }
 }
 
 .qg-animate-in   { animation: qg-fade-in   0.22s ease both; }

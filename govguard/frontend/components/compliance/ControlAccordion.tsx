@@ -45,7 +45,7 @@ function ControlRow({ control, grantId, onUpdate }: { control: ComplianceControl
             {control.cfrClause && (
               <span style={{
                 fontSize: 9, color: "var(--qg-text-4)",
-                background: "rgba(15,23,42,0.06)", padding: "1px 6px",
+                background: "rgba(33,36,39,0.06)", padding: "1px 6px",
                 borderRadius: "var(--qg-radius-sm)", border: "1px solid var(--qg-border)",
               }}>
                 {control.cfrClause}

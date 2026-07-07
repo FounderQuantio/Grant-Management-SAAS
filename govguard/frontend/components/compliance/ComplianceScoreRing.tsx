@@ -12,7 +12,7 @@ export function ComplianceScoreRing({
     <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
       <div style={{ position: "relative", width: 88, height: 88 }}>
         <svg width="88" height="88" style={{ transform: "rotate(-90deg)" }} viewBox="0 0 88 88">
-          <circle cx="44" cy="44" r={r} fill="none" stroke="rgba(15,23,42,0.08)" strokeWidth="8" />
+          <circle cx="44" cy="44" r={r} fill="none" stroke="rgba(33,36,39,0.08)" strokeWidth="8" />
           <circle
             cx="44" cy="44" r={r} fill="none" stroke={color} strokeWidth="8"
             strokeDasharray={circumference} strokeDashoffset={offset}

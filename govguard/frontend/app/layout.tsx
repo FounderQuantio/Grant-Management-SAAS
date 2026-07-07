@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import "./quantio-theme.css";
 import SiteHeader from "@/components/shared/SiteHeader";
 import SiteFooter from "@/components/shared/SiteFooter";
 
 const inter = Inter({ subsets: ["latin"], variable: "--qg-font-loaded" });
+const playfair = Playfair_Display({ subsets: ["latin"], weight: ["600", "700"], variable: "--qg-font-display" });
 
 export const metadata: Metadata = {
   title: "GovGuard™ — Grant Compliance Platform",
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <body style={{ fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
         <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
           <SiteHeader />

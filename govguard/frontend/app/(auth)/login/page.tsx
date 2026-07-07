@@ -32,7 +32,7 @@ export default function LoginPage() {
           }}>
             <Shield size={28} color="var(--qg-gold)" />
           </div>
-          <h1 style={{ fontSize: 32, fontWeight: 900, color: "var(--qg-text-1)", letterSpacing: "-0.8px" }}>
+          <h1 style={{ fontFamily: "var(--qg-font-display)", fontSize: 32, fontWeight: 900, color: "var(--qg-text-1)", letterSpacing: "-0.8px" }}>
             GovGuard™
           </h1>
           <p style={{ fontSize: 13, color: "var(--qg-text-3)", marginTop: 6 }}>
