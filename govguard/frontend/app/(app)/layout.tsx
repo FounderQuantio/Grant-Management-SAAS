@@ -122,7 +122,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }}>
           <Link
             href="/notifications"
-            style={{ position: "relative", padding: 6, borderRadius: "var(--qg-radius-md)", display: "flex", color: "var(--qg-text-3)", textDecoration: "none", transition: "var(--qg-ease)" }}
+            style={{ position: "relative", padding: 6, borderRadius: "var(--qg-radius-md)", display: "flex", color: "var(--qg-header-text)", textDecoration: "none", transition: "var(--qg-ease)" }}
           >
             <Bell size={16} />
             {unreadCount > 0 && (
