@@ -1,13 +1,15 @@
 "use client";
+import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, FileText, AlertTriangle, ClipboardCheck,
-  Settings, Users, BarChart3, Bell, LogOut,
+  Settings, Users, BarChart3, Bell, LogOut, FileDown,
 } from "lucide-react";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useAlertStore } from "@/lib/stores/alerts";
 import { useAlertFeed } from "@/lib/hooks/useAlertFeed";
+import { generateFindingsReport } from "@/lib/reportExport";
 
 const NAV_ITEMS = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard",    roles: [] },
@@ -46,6 +48,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const navItems = NAV_ITEMS.filter(
     (item) => item.roles.length === 0 || hasRole(...item.roles)
   );
+
+  const [reportBusy, setReportBusy] = useState(false);
+  const handleDownloadReport = async () => {
+    setReportBusy(true);
+    try {
+      await generateFindingsReport();
+    } catch (err) {
+      console.error("Failed to generate report:", err);
+    } finally {
+      setReportBusy(false);
+    }
+  };
 
   return (
     <div style={{ display: "flex", height: "100%", background: "var(--qg-bg)", overflow: "hidden" }}>
@@ -120,6 +134,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           flexShrink: 0,
           gap: 10,
         }}>
+          <button
+            onClick={handleDownloadReport}
+            disabled={reportBusy}
+            title="Download a full findings report (KPIs, risk leaderboard)"
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: "var(--qg-surface-2)", border: "1px solid var(--qg-border)",
+              borderRadius: "var(--qg-radius-md)", padding: "6px 13px",
+              cursor: reportBusy ? "not-allowed" : "pointer",
+              color: "var(--qg-text-1)", fontSize: 11, fontWeight: 700,
+              opacity: reportBusy ? 0.6 : 1, transition: "var(--qg-ease)",
+            }}
+          >
+            <FileDown size={13} />
+            {reportBusy ? "Generating…" : "Download Report"}
+          </button>
           <Link
             href="/notifications"
             style={{ position: "relative", padding: 6, borderRadius: "var(--qg-radius-md)", display: "flex", color: "var(--qg-header-text)", textDecoration: "none", transition: "var(--qg-ease)" }}
