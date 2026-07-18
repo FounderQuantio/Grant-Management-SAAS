@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user_or_service as get_current_user, require_role, UserContext
+from core.auth import get_current_user_or_service as get_current_user, UserContext
 from core.db import get_db
 from core.models import ERPSyncJob
 
@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/jobs")
 async def list_sync_jobs(
-    user: UserContext = Depends(require_role("compliance_officer")),
+    user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(

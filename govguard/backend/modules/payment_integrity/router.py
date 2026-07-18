@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user_or_service as get_current_user, require_role, UserContext
+from core.auth import get_current_user_or_service as get_current_user, UserContext
 from core.db import get_db, set_tenant
 from core.models import Vendor
 
@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/vendors")
 async def list_vendors(
-    user: UserContext = Depends(require_role("compliance_officer")),
+    user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant(db, str(user.tenant_id))
