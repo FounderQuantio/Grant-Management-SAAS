@@ -36,7 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useAlertFeed();
 
-  const role = (auth0User?.["https://govguard.app/role"] as string) || "finance_staff";
+  const role = (auth0User?.["https://govguard.app/role"] as string) || "system_admin";
   const displayName = auth0User?.name || auth0User?.email || "User";
 
   const hasRole = (...roles: string[]) => {
