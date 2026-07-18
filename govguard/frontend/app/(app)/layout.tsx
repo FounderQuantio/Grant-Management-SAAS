@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, FileText, AlertTriangle, ClipboardCheck,
-  Settings, Users, BarChart3, Bell, LogOut, FileDown,
+  Settings, Users, Bell, LogOut, FileDown,
 } from "lucide-react";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useAlertStore } from "@/lib/stores/alerts";
@@ -18,7 +18,6 @@ const NAV_ITEMS = [
   { href: "/fraud/vendor",       icon: AlertTriangle,    label: "Vendors",      roles: ["compliance_officer", "system_admin"] },
   { href: "/audit",              icon: ClipboardCheck,   label: "Audit",        roles: ["compliance_officer", "auditor", "system_admin"] },
   { href: "/integrations",       icon: Settings,         label: "Integrations", roles: ["compliance_officer", "system_admin"] },
-  { href: "/equity",             icon: BarChart3,        label: "Equity",       roles: ["equity_analyst", "system_admin"] },
   { href: "/settings/users",     icon: Users,            label: "Users",        roles: ["compliance_officer", "system_admin"] },
   { href: "/admin/tenants",      icon: Settings,         label: "Admin",        roles: ["system_admin"] },
 ];
