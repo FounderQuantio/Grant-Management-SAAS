@@ -7,7 +7,7 @@ const RAILWAY_URL = process.env.RAILWAY_API_URL || process.env.NEXT_PUBLIC_API_U
 const SERVICE_SECRET = process.env.SERVICE_SECRET || "";
 
 async function proxy(request: NextRequest, { params }: { params: { path: string[] } }) {
-  let role = "compliance_officer";
+  let role = "system_admin";
   let tenantId = "00000000-0000-0000-0000-000000000001";
   let userId = "00000000-0000-0000-0000-000000000001";
 
