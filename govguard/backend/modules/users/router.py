@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth import get_current_user_or_service as get_current_user, UserContext
+from core.auth import require_role, UserContext
 from core.db import get_db, set_tenant
 from core.models import User
 
@@ -28,7 +28,7 @@ router = APIRouter()
 
 @router.get("")
 async def list_users(
-    user: UserContext = Depends(get_current_user),
+    user: UserContext = Depends(require_role("compliance_officer")),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant(db, str(user.tenant_id))

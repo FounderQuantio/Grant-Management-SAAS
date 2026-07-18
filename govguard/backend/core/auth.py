@@ -138,7 +138,7 @@ async def get_current_user(
 
 def require_role(*roles: str):
     """Dependency factory: enforce minimum role requirement."""
-    async def _check(user: UserContext = Depends(get_current_user)) -> UserContext:
+    async def _check(user: UserContext = Depends(get_current_user_or_service)) -> UserContext:
         user_level = ROLES.get(user.role, 0)
         required_level = max(ROLES.get(r, 0) for r in roles)
         if user_level < required_level:
