@@ -17,7 +17,7 @@ const fmtMoney = (n: number) =>
 // Some imported transactions carry a raw NAICS code instead of a normalized
 // cost_category (data-quality artifact from CSV ingestion, not a UI bug).
 const NAICS_LABELS: Record<string, string> = {
-  "722511": "Food & Dining Services",
+  "722511": "Full-Service Restaurants",
 };
 
 function categoryLabel(category: string): string {
