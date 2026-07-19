@@ -110,8 +110,10 @@ def create_app() -> FastAPI:
             async with _engine.connect() as conn:
                 cur = (await conn.execute(_text("SELECT current_user"))).scalar()
                 rows = (await conn.execute(_text(
-                    "SELECT tablename, tableowner, rowsecurity, forcerowsecurity "
-                    "FROM pg_tables WHERE schemaname='public' ORDER BY tablename"
+                    "SELECT c.relname AS tablename, pg_get_userbyid(c.relowner) AS tableowner, "
+                    "c.relrowsecurity AS rowsecurity, c.relforcerowsecurity AS forcerowsecurity "
+                    "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                    "WHERE n.nspname = 'public' AND c.relkind = 'r' ORDER BY c.relname"
                 ))).all()
             tables = [
                 {"table": r[0], "owner": r[1], "rls_enabled": r[2], "rls_forced": r[3]}
