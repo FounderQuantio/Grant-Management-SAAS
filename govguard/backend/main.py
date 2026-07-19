@@ -8,7 +8,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-import core.auth as core_auth
 from core.config import settings
 from core.db import init_db, close_db
 from core.cache import init_redis, close_redis
@@ -97,59 +96,6 @@ def create_app() -> FastAPI:
     @app.get("/health", include_in_schema=False)
     async def health() -> dict:
         return {"status": "ok", "version": "1.0.1"}
-
-    @app.get("/api/v1/diag/rls-check", include_in_schema=False)
-    async def rls_check(user=core_auth.RequireSystemAdmin) -> dict:
-        """TEMPORARY diagnostic (system_admin only) — verifies whether RLS table
-        owner == runtime connection role (if so, RLS policies are silently inert
-        per Postgres semantics unless FORCE ROW LEVEL SECURITY is also set).
-        Read-only. Remove after verification."""
-        try:
-            from sqlalchemy import text as _text
-            from core.db import engine as _engine
-            async with _engine.connect() as conn:
-                cur = (await conn.execute(_text("SELECT current_user"))).scalar()
-                rows = (await conn.execute(_text(
-                    "SELECT c.relname AS tablename, pg_get_userbyid(c.relowner) AS tableowner, "
-                    "c.relrowsecurity AS rowsecurity, c.relforcerowsecurity AS forcerowsecurity "
-                    "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
-                    "WHERE n.nspname = 'public' AND c.relkind = 'r' ORDER BY c.relname"
-                ))).all()
-            tables = [
-                {"table": r[0], "owner": r[1], "rls_enabled": r[2], "rls_forced": r[3]}
-                for r in rows
-            ]
-            owner_matches_runtime = any(t["owner"] == cur for t in tables)
-            return {
-                "current_runtime_user": cur,
-                "owner_matches_runtime_role": owner_matches_runtime,
-                "tables": tables,
-            }
-        except Exception as e:
-            return {"error": f"{type(e).__name__}: {e}"}
-
-    @app.post("/api/v1/diag/apply-force-rls", include_in_schema=False)
-    async def apply_force_rls(user=core_auth.RequireSystemAdmin) -> dict:
-        """TEMPORARY, system_admin-only — applies FORCE ROW LEVEL SECURITY to
-        the 17 RLS-enabled tables (see migrations/v2_004_force_row_level_security.sql).
-        Idempotent DDL; only changes behavior for the table OWNER role, never
-        for non-owner roles — cannot loosen security, only tighten it.
-        Remove this endpoint after applying."""
-        from sqlalchemy import text as _text
-        from core.db import engine as _engine
-        tables = [
-            "users", "grants", "vendors", "transactions", "risk_score_logs",
-            "compliance_controls", "audit_events", "audit_findings",
-            "corrective_action_plans", "erp_sync_jobs", "entity_links",
-            "fraud_assessments", "anomaly_alerts", "compliance_violations",
-            "control_actions", "risk_predictions", "subrecipients",
-        ]
-        applied = []
-        async with _engine.begin() as conn:
-            for t in tables:
-                await conn.execute(_text(f"ALTER TABLE {t} FORCE ROW LEVEL SECURITY"))
-                applied.append(t)
-        return {"applied_force_rls_to": applied, "count": len(applied)}
 
     @app.get("/ml-status", include_in_schema=False)
     async def ml_status() -> dict:
