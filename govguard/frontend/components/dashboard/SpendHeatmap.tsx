@@ -34,7 +34,7 @@ function intensityColor(ratio: number) {
 
 export function SpendHeatmap() {
   const { data, isLoading } = useSWR<{ cells: HeatmapCell[] }>(
-    "/api/v1/dashboard/heatmap?period=30d",
+    "/api/v1/dashboard/heatmap?period=90d",
     (url) => api.get<{ cells: HeatmapCell[] }>(url)
   );
 
@@ -44,12 +44,16 @@ export function SpendHeatmap() {
 
   return (
     <div className="qg-card" style={{ padding: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
         <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--qg-text-1)", display: "flex", alignItems: "center", gap: 7 }}>
           <Flame size={13} color="var(--qg-gold)" /> Spend Heatmap by Cost Category
         </h3>
         <span className="qg-badge qg-badge-muted">{fmtMoney(totalSpend)} total</span>
       </div>
+      <p style={{ fontSize: 10, color: "var(--qg-text-4)", marginBottom: 12 }}>
+        Last 90 days — a wider window than the KPI tiles above (last 30 days), chosen so category
+        coverage isn&apos;t sparse for lower-volume cost categories.
+      </p>
 
       {isLoading ? (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
