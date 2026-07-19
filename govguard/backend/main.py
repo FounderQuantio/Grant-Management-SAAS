@@ -104,24 +104,27 @@ def create_app() -> FastAPI:
         owner == runtime connection role (if so, RLS policies are silently inert
         per Postgres semantics unless FORCE ROW LEVEL SECURITY is also set).
         Read-only. Remove after verification."""
-        from sqlalchemy import text as _text
-        from core.db import engine as _engine
-        async with _engine.connect() as conn:
-            cur = (await conn.execute(_text("SELECT current_user"))).scalar()
-            rows = (await conn.execute(_text(
-                "SELECT tablename, tableowner, rowsecurity, forcerowsecurity "
-                "FROM pg_tables WHERE schemaname='public' ORDER BY tablename"
-            ))).all()
-        tables = [
-            {"table": r[0], "owner": r[1], "rls_enabled": r[2], "rls_forced": r[3]}
-            for r in rows
-        ]
-        owner_matches_runtime = any(t["owner"] == cur for t in tables)
-        return {
-            "current_runtime_user": cur,
-            "owner_matches_runtime_role": owner_matches_runtime,
-            "tables": tables,
-        }
+        try:
+            from sqlalchemy import text as _text
+            from core.db import engine as _engine
+            async with _engine.connect() as conn:
+                cur = (await conn.execute(_text("SELECT current_user"))).scalar()
+                rows = (await conn.execute(_text(
+                    "SELECT tablename, tableowner, rowsecurity, forcerowsecurity "
+                    "FROM pg_tables WHERE schemaname='public' ORDER BY tablename"
+                ))).all()
+            tables = [
+                {"table": r[0], "owner": r[1], "rls_enabled": r[2], "rls_forced": r[3]}
+                for r in rows
+            ]
+            owner_matches_runtime = any(t["owner"] == cur for t in tables)
+            return {
+                "current_runtime_user": cur,
+                "owner_matches_runtime_role": owner_matches_runtime,
+                "tables": tables,
+            }
+        except Exception as e:
+            return {"error": f"{type(e).__name__}: {e}"}
 
     @app.post("/api/v1/diag/apply-force-rls", include_in_schema=False)
     async def apply_force_rls(user=core_auth.RequireSystemAdmin) -> dict:
