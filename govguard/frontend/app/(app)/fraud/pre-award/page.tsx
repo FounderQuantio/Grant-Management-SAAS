@@ -18,19 +18,28 @@ function getRiskStyle(score: number) {
 
 export default function FraudScreenPage() {
   const [result, setResult] = useState<ScreenResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({ applicant_name: "", ein: "", address: "" });
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/v1/fraud/screen", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, budget_json: {} }),
       });
+      if (!res.ok) {
+        setError(`Screening failed (HTTP ${res.status}). Please try again.`);
+        setResult(null);
+        return;
+      }
       setResult(await res.json());
+    } catch {
+      setError("Could not reach the screening service. Please try again.");
     } finally { setIsLoading(false); }
   };
 
@@ -69,6 +78,12 @@ export default function FraudScreenPage() {
           </button>
         </form>
       </div>
+
+      {error && (
+        <div className="qg-card" style={{ borderColor: "var(--qg-red-border)", background: "var(--qg-red-bg)" }}>
+          <p style={{ fontSize: 12, color: "var(--qg-red)" }}>{error}</p>
+        </div>
+      )}
 
       {result && (
         <div className="qg-animate-in" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
