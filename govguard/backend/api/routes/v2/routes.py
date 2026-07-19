@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 
 from core.auth import get_current_user_or_service, UserContext
-from core.db import get_db
+from core.db import get_db, set_tenant
 from core.models import Transaction, Grant, Vendor, FraudAssessmentLog
 
 # v2 services
@@ -53,7 +53,9 @@ async def assess_fraud(
 
     v2 NEW: Multi-rule engine with GAO traceability (replaces simple heuristic scorer)
     """
-    # set_tenant skipped — v2 routes filter by tenant_id explicitly in every query
+    # RLS session variable set for defense-in-depth, alongside the manual
+    # tenant_id filters this route already applies to every query.
+    await set_tenant(db, str(user.tenant_id))
 
     # Load transaction + context
     result = await db.execute(
@@ -219,7 +221,9 @@ async def detect_anomalies(
 
     v2 NEW: 6-detector statistical anomaly engine
     """
-    # set_tenant skipped — v2 routes filter by tenant_id explicitly in every query
+    # RLS session variable set for defense-in-depth, alongside the manual
+    # tenant_id filters this route already applies to every query.
+    await set_tenant(db, str(user.tenant_id))
 
     grant = await db.get(Grant, grant_id)
     if not grant or str(grant.tenant_id) != str(user.tenant_id):
@@ -285,7 +289,9 @@ async def run_compliance_monitor(
 
     v2 NEW: GAO-mapped rule engine with auto-CAP creation
     """
-    # set_tenant skipped — v2 routes filter by tenant_id explicitly in every query
+    # RLS session variable set for defense-in-depth, alongside the manual
+    # tenant_id filters this route already applies to every query.
+    await set_tenant(db, str(user.tenant_id))
 
     import structlog as _slog
     _log = _slog.get_logger()
@@ -413,7 +419,9 @@ async def get_entity_graph(
 
     v2 NEW: Cross-entity financial intelligence with conflict detection
     """
-    # set_tenant skipped — v2 routes filter by tenant_id explicitly in every query
+    # RLS session variable set for defense-in-depth, alongside the manual
+    # tenant_id filters this route already applies to every query.
+    await set_tenant(db, str(user.tenant_id))
 
     vendors_result = await db.execute(
         text("SELECT * FROM vendors WHERE tenant_id=:tid"),
@@ -456,7 +464,9 @@ async def predict_grant_risk(
 
     v2 NEW: Predictive analytics with trend extrapolation + GAO High-Risk overlap
     """
-    # set_tenant skipped — v2 routes filter by tenant_id explicitly in every query
+    # RLS session variable set for defense-in-depth, alongside the manual
+    # tenant_id filters this route already applies to every query.
+    await set_tenant(db, str(user.tenant_id))
 
     grant = await db.get(Grant, grant_id)
     if not grant or str(grant.tenant_id) != str(user.tenant_id):
@@ -721,7 +731,9 @@ async def bulk_fraud_scan(
     Run fraud engine across ALL pending transactions for a grant.
     v2 NEW: Batch assessment with aggregate risk summary.
     """
-    # set_tenant skipped — v2 routes filter by tenant_id explicitly in every query
+    # RLS session variable set for defense-in-depth, alongside the manual
+    # tenant_id filters this route already applies to every query.
+    await set_tenant(db, str(user.tenant_id))
 
     result = await db.execute(
         text("SELECT id FROM transactions WHERE grant_id=:gid AND tenant_id=:tid AND flag_status='pending' LIMIT 100"),
