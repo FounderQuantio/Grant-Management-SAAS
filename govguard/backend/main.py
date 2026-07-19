@@ -98,7 +98,7 @@ def create_app() -> FastAPI:
     async def health() -> dict:
         return {"status": "ok", "version": "1.0.1"}
 
-    @app.get("/diag/rls-check", include_in_schema=False)
+    @app.get("/api/v1/diag/rls-check", include_in_schema=False)
     async def rls_check(user=core_auth.RequireSystemAdmin) -> dict:
         """TEMPORARY diagnostic (system_admin only) — verifies whether RLS table
         owner == runtime connection role (if so, RLS policies are silently inert
@@ -123,7 +123,7 @@ def create_app() -> FastAPI:
             "tables": tables,
         }
 
-    @app.post("/diag/apply-force-rls", include_in_schema=False)
+    @app.post("/api/v1/diag/apply-force-rls", include_in_schema=False)
     async def apply_force_rls(user=core_auth.RequireSystemAdmin) -> dict:
         """TEMPORARY, system_admin-only — applies FORCE ROW LEVEL SECURITY to
         the 17 RLS-enabled tables (see migrations/v2_004_force_row_level_security.sql).
