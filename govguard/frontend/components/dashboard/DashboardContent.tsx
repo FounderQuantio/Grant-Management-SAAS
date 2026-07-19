@@ -5,6 +5,7 @@ import { DashboardKPIs } from "@/types";
 import { KPITile } from "./KPITile";
 import { RiskLeaderboard } from "./RiskLeaderboard";
 import { AlertTriage } from "./AlertTriage";
+import { SpendHeatmap } from "./SpendHeatmap";
 import { TrendingDown, ClipboardCheck, AlertTriangle, DollarSign } from "lucide-react";
 
 export function DashboardContent() {
@@ -67,6 +68,8 @@ export function DashboardContent() {
         <RiskLeaderboard leaderboard={kpis?.riskLeaderboard ?? []} loading={isLoading} />
         <AlertTriage />
       </div>
+
+      <SpendHeatmap />
     </div>
   );
 }
