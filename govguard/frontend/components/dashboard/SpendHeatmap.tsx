@@ -14,6 +14,18 @@ interface HeatmapCell {
 const fmtMoney = (n: number) =>
   n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : `$${Math.round(n).toLocaleString()}`;
 
+// Some imported transactions carry a raw NAICS code instead of a normalized
+// cost_category (data-quality artifact from CSV ingestion, not a UI bug).
+const NAICS_LABELS: Record<string, string> = {
+  "722511": "Food & Dining Services",
+};
+
+function categoryLabel(category: string): string {
+  if (NAICS_LABELS[category]) return `${NAICS_LABELS[category]} (NAICS ${category})`;
+  if (/^\d+$/.test(category)) return `NAICS ${category}`;
+  return category.replace(/_/g, " ");
+}
+
 function intensityColor(ratio: number) {
   // Interpolates from a light gold tint to the full brand gold as spend share increases.
   const alpha = 0.08 + ratio * 0.42;
@@ -62,7 +74,7 @@ export function SpendHeatmap() {
                 }}
               >
                 <p style={{ fontSize: 10, fontWeight: 700, color: "var(--qg-text-3)", textTransform: "capitalize", marginBottom: 8 }}>
-                  {c.category.replace(/_/g, " ")}
+                  {categoryLabel(c.category)}
                 </p>
                 <p style={{ fontSize: 17, fontWeight: 800, color: "var(--qg-text-1)", letterSpacing: "-0.3px" }}>
                   {fmtMoney(c.spend)}
