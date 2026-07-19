@@ -34,7 +34,7 @@ function intensityColor(ratio: number) {
 
 export function SpendHeatmap() {
   const { data, isLoading } = useSWR<{ cells: HeatmapCell[] }>(
-    "/api/v1/dashboard/heatmap",
+    "/api/v1/dashboard/heatmap?period=30d",
     (url) => api.get<{ cells: HeatmapCell[] }>(url)
   );
 

@@ -107,14 +107,17 @@ class DashboardService:
         await cache_set(cache_key, kpis, ttl=300)
         return kpis
 
-    async def get_heatmap(self, tenant_id: UUID, grant_id: Optional[UUID] = None, group_by: str = "category") -> dict:
-        cache_key = f"heatmap:{tenant_id}:{grant_id}:{group_by}"
+    async def get_heatmap(
+        self, tenant_id: UUID, grant_id: Optional[UUID] = None,
+        group_by: str = "category", period_days: int = 30,
+    ) -> dict:
+        cache_key = f"heatmap:{tenant_id}:{grant_id}:{group_by}:{period_days}"
         cached = await cache_get(cache_key)
         if cached:
             return cached
 
-        where = "tenant_id = :tid"
-        params = {"tid": str(tenant_id)}
+        where = "tenant_id = :tid AND created_at > NOW() - INTERVAL '1 day' * :days"
+        params = {"tid": str(tenant_id), "days": period_days}
         if grant_id:
             where += " AND grant_id = :gid"
             params["gid"] = str(grant_id)

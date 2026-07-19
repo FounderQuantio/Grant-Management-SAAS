@@ -33,10 +33,12 @@ async def get_kpis(
 async def get_heatmap(
     grant_id: Optional[UUID] = Query(None),
     group_by: str = Query("category"),
+    period: str = Query("30d"),
     user: UserContext = Depends(get_current_user),
     svc: DashboardService = Depends(_get_svc),
 ):
-    return await svc.get_heatmap(user.tenant_id, grant_id, group_by)
+    days = int(period.rstrip("d")) if period.endswith("d") else 30
+    return await svc.get_heatmap(user.tenant_id, grant_id, group_by, days)
 
 
 @router.get("/alerts")
