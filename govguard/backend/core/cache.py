@@ -1,8 +1,11 @@
 """GovGuard™ — Redis Cache Layer"""
 import json
 from typing import Any, Optional
+import structlog
 import redis.asyncio as aioredis
 from core.config import settings
+
+log = structlog.get_logger()
 
 redis_client: Optional[aioredis.Redis] = None
 
@@ -12,8 +15,9 @@ async def init_redis() -> None:
     try:
         redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
         await redis_client.ping()
-    except Exception:
+    except Exception as e:
         redis_client = None
+        log.warning("redis_init_failed", error=str(e))
 
 
 async def close_redis() -> None:

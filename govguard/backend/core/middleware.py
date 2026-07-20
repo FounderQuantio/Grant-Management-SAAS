@@ -99,8 +99,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         "details": {},
                     },
                 )
-        except Exception:
-            pass  # Never block requests due to Redis failure
+        except Exception as e:
+            log.warning("rate_limit_check_failed", error=str(e))  # Never block requests due to Redis failure
 
         return await call_next(request)
 

@@ -97,7 +97,15 @@ def create_app() -> FastAPI:
 
     @app.get("/health", include_in_schema=False)
     async def health() -> dict:
-        return {"status": "ok", "version": "1.0.1"}
+        from core.cache import redis_client
+        redis_status = "unavailable"
+        if redis_client:
+            try:
+                await redis_client.ping()
+                redis_status = "ok"
+            except Exception:
+                redis_status = "unavailable"
+        return {"status": "ok", "version": "1.0.1", "redis": redis_status}
 
     @app.get("/ml-status", include_in_schema=False)
     async def ml_status() -> dict:
