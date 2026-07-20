@@ -6,6 +6,7 @@ import {
   ArrowLeft, FileText, AlertTriangle, CheckCircle2, Clock,
   Shield, TrendingUp, Activity, Search, Zap, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { GrantTabs } from "@/components/grants/GrantTabs";
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
@@ -321,6 +322,8 @@ export default function GrantDetailPage({ params }: { params: { id: string } }) 
           <StatusBadge status={String(grant.status)} />
         </div>
       </div>
+
+      <GrantTabs grantId={id} />
 
       {/* Stat tiles */}
       <div className="qg-grid-4">

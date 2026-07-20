@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCompliance } from "@/lib/hooks/useCompliance";
 import { ControlAccordion } from "@/components/compliance/ControlAccordion";
 import { ComplianceScoreRing } from "@/components/compliance/ComplianceScoreRing";
+import { GrantTabs } from "@/components/grants/GrantTabs";
 import { CheckCircle2, XCircle, Clock, Filter } from "lucide-react";
 
 const DOMAINS = ["all", "financial_management", "procurement", "subrecipient", "reporting", "cost_principles", "closeout"];
@@ -19,6 +20,7 @@ export default function CompliancePage() {
 
   return (
     <div className="qg-animate-in">
+      <GrantTabs grantId={grantId} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <span className="qg-section-label-badge" style={{ marginBottom: 8, display: "inline-block" }}>Compliance</span>
