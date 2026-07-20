@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import structlog
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -13,7 +13,6 @@ from core.db import init_db, close_db
 from core.cache import init_redis, close_redis
 from core.exceptions import GovGuardException
 from core.middleware import TenantMiddleware, RateLimitMiddleware, AuditLogMiddleware, RequestIDMiddleware
-import core.auth as core_auth
 
 from modules.auth.router import router as auth_router
 from modules.tenants.router import router as tenants_router
@@ -154,29 +153,6 @@ def create_app() -> FastAPI:
         except Exception as e:
             result["drift_monitor"] = f"FAILED: {e}"
         return result
-
-    @app.post("/api/v1/diag/apply-migration-v2006", include_in_schema=False)
-    async def apply_migration_v2006(user=core_auth.RequireSystemAdmin) -> dict:
-        """TEMPORARY — applies database/migrations/v2_006_report_certification.sql
-        statement-by-statement. Remove after use."""
-        import pathlib
-        from core.db import engine
-        from sqlalchemy import text as sql_text
-
-        path = pathlib.Path(__file__).parent / "database" / "migrations" / "v2_006_report_certification.sql"
-        raw = path.read_text()
-        no_comments = "\n".join(l for l in raw.split("\n") if not l.strip().startswith("--"))
-        statements = [s.strip() for s in no_comments.split(";\n") if s.strip()]
-
-        results = []
-        for stmt in statements:
-            try:
-                async with engine.begin() as conn:
-                    await conn.execute(sql_text(stmt))
-                results.append({"statement": stmt[:80], "status": "ok"})
-            except Exception as e:
-                results.append({"statement": stmt[:80], "status": "error", "error": str(e)})
-        return {"results": results}
 
     PREFIX = "/api/v1"
     app.include_router(auth_router,         prefix=f"{PREFIX}/auth",         tags=["Auth"])
