@@ -336,3 +336,48 @@ class AnomalyAlert(Base):
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     resolved_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at: Mapped[datetime] = now_default()
+
+
+# ── Performance Reports (2 CFR 200.329) ────────────────────────────────────
+
+class PerformanceReport(Base):
+    __tablename__ = "performance_reports"
+    __table_args__ = (
+        Index("ix_perf_reports_tenant_grant", "tenant_id", "grant_id"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = tenant_fk()
+    grant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("grants.id"), nullable=False)
+    period_label: Mapped[str] = mapped_column(String(20), nullable=False)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    submitted_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    narrative: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = now_default()
+
+
+# ── Budget Modification Requests (2 CFR 200.308) ───────────────────────────
+
+class BudgetModificationRequest(Base):
+    __tablename__ = "budget_modification_requests"
+    __table_args__ = (
+        Index("ix_budget_mods_tenant_grant", "tenant_id", "grant_id"),
+        Index("ix_budget_mods_status", "tenant_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = tenant_fk()
+    grant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("grants.id"), nullable=False)
+    category: Mapped[str] = mapped_column(String(100), nullable=False)
+    old_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    new_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    delta_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    cumulative_pct_of_total: Mapped[Decimal] = mapped_column(Numeric(6, 3), nullable=False)
+    requires_prior_approval: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    requested_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    reviewed_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    review_note: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = now_default()

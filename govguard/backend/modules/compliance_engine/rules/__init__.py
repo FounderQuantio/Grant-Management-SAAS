@@ -22,10 +22,32 @@ async def evaluate_rule(control_code: str, domain: str, grant, db) -> str:
 
 
 async def evaluate_financial_management(code: str, grant, db) -> str:
-    """2 CFR 200.302 - Financial Management standards."""
-    # In production: check ERP integration status, GL account structure, etc.
+    """2 CFR 200.302 - Financial Management standards; FM-002 = 2 CFR 200.308
+    (budget/program revision prior approval)."""
     if grant is None:
         return "not_applicable"
+
+    if code == "FM-002":
+        from sqlalchemy import text
+        # Fail if a modification requiring prior approval was ever auto-applied
+        # (the 10% gate was bypassed), or if a pending approval-required
+        # request has sat unresolved for more than 30 days.
+        result = await db.execute(
+            text("""
+                SELECT COUNT(*) FROM budget_modification_requests
+                WHERE grant_id = :gid
+                  AND (
+                    (requires_prior_approval = TRUE AND status = 'auto_applied')
+                    OR (requires_prior_approval = TRUE AND status = 'pending'
+                        AND created_at < NOW() - INTERVAL '30 days')
+                  )
+            """),
+            {"gid": str(grant.id)},
+        )
+        violations = result.scalar() or 0
+        return "fail" if violations > 0 else "pass"
+
+    # In production: check ERP integration status, GL account structure, etc.
     if grant.status == "active" and grant.budget_json:
         return "pass"
     return "not_tested"
@@ -52,7 +74,13 @@ async def evaluate_subrecipient(code: str, grant, db) -> str:
 
 
 async def evaluate_reporting(code: str, grant, db) -> str:
-    """2 CFR 200.328-329 - Performance reporting."""
+    """2 CFR 200.328-329 - Performance reporting. RPT-002 (200.328/329) is
+    backed by real submission tracking against derived quarterly periods."""
+    if grant is None:
+        return "not_applicable"
+    if code == "RPT-002":
+        from modules.performance_reporting.service import evaluate_reporting_status
+        return await evaluate_reporting_status(grant.id, grant.period_start, grant.period_end, db)
     return "not_tested"
 
 
