@@ -22,6 +22,7 @@ from core.auth import get_current_user_or_service as get_current_user, require_r
 from core.db import get_db, set_tenant
 from core.models import Grant, BudgetModificationRequest
 from core.exceptions import GrantNotFound, NotFoundError
+from core.user_fk import resolve_user_fk
 
 router = APIRouter()
 
@@ -122,7 +123,7 @@ async def request_modification(
         cumulative_pct_of_total=projected_cumulative_pct,
         requires_prior_approval=requires_approval,
         status="pending" if requires_approval else "auto_applied",
-        requested_by=user.id,
+        requested_by=await resolve_user_fk(db, user.id),
     )
     db.add(mod)
 
@@ -159,7 +160,7 @@ async def review_modification(
     if mod.status != "pending":
         raise NotFoundError(f"Request already resolved (status={mod.status})")
 
-    mod.reviewed_by = user.id
+    mod.reviewed_by = await resolve_user_fk(db, user.id)
     mod.reviewed_at = datetime.now(timezone.utc)
     mod.review_note = data.note
 

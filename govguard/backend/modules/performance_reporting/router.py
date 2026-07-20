@@ -11,6 +11,7 @@ from core.auth import get_current_user_or_service as get_current_user, UserConte
 from core.db import get_db, set_tenant
 from core.models import Grant, PerformanceReport
 from core.exceptions import GrantNotFound
+from core.user_fk import resolve_user_fk
 from modules.performance_reporting.service import expected_quarterly_periods
 
 router = APIRouter()
@@ -67,44 +68,43 @@ async def submit_report(
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant(db, str(user.tenant_id))
-    try:
-        result = await db.execute(
-            select(Grant).where(and_(Grant.id == grant_id, Grant.tenant_id == user.tenant_id))
-        )
-    except Exception as e:
-        return {"debug_error": f"grant lookup: {type(e).__name__}: {e}"}
+    result = await db.execute(
+        select(Grant).where(and_(Grant.id == grant_id, Grant.tenant_id == user.tenant_id))
+    )
     grant = result.scalar_one_or_none()
     if not grant:
         raise GrantNotFound()
 
-    try:
-        existing_result = await db.execute(
-            select(PerformanceReport).where(and_(
-                PerformanceReport.grant_id == grant_id,
-                PerformanceReport.period_label == data.period_label,
-            ))
-        )
-    except Exception as e:
-        return {"debug_error": f"existing lookup: {type(e).__name__}: {e}"}
+    matching_period = next(
+        (p for p in expected_quarterly_periods(grant.period_start, grant.period_end)
+         if p["label"] == data.period_label),
+        None,
+    )
+    period_end = matching_period["period_end"] if matching_period else date.today()
+
+    existing_result = await db.execute(
+        select(PerformanceReport).where(and_(
+            PerformanceReport.grant_id == grant_id,
+            PerformanceReport.period_label == data.period_label,
+        ))
+    )
     existing = existing_result.scalar_one_or_none()
     now = datetime.now(timezone.utc)
+    submitted_by = await resolve_user_fk(db, user.id)
     if existing:
         existing.submitted_at = now
-        existing.submitted_by = user.id
+        existing.submitted_by = submitted_by
         existing.narrative = data.narrative
     else:
         existing = PerformanceReport(
             tenant_id=user.tenant_id,
             grant_id=grant_id,
             period_label=data.period_label,
-            period_end=now.date(),
+            period_end=period_end,
             submitted_at=now,
-            submitted_by=user.id,
+            submitted_by=submitted_by,
             narrative=data.narrative,
         )
         db.add(existing)
-    try:
-        await db.commit()
-    except Exception as e:
-        return {"debug_error": f"commit: {type(e).__name__}: {e}"}
+    await db.commit()
     return {"period_label": data.period_label, "submitted_at": now.isoformat()}
