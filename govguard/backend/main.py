@@ -8,7 +8,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-import core.auth as core_auth
 from core.config import settings
 from core.db import init_db, close_db
 from core.cache import init_redis, close_redis
@@ -99,35 +98,6 @@ def create_app() -> FastAPI:
     @app.get("/health", include_in_schema=False)
     async def health() -> dict:
         return {"status": "ok", "version": "1.0.1"}
-
-    @app.post("/api/v1/diag/apply-migration-v2005", include_in_schema=False)
-    async def apply_migration_v2005(user=core_auth.RequireSystemAdmin) -> dict:
-        """TEMPORARY, system_admin-only — applies
-        migrations/v2_005_regulatory_workflows.sql (performance_reports +
-        budget_modification_requests tables, RLS, FM-002 control_library
-        row). Idempotent (IF NOT EXISTS / ON CONFLICT DO NOTHING throughout).
-        Remove this endpoint after applying."""
-        from pathlib import Path
-        from sqlalchemy import text as _text
-        from core.db import engine as _engine
-
-        sql_path = Path(__file__).parent / "database" / "migrations" / "v2_005_regulatory_workflows.sql"
-        raw = sql_path.read_text()
-        # Strip full-line comments first so a comment block sharing a segment
-        # with real SQL doesn't cause that segment to be dropped entirely.
-        no_comments = "\n".join(l for l in raw.split("\n") if not l.strip().startswith("--"))
-        statements = [s.strip() for s in no_comments.split(";\n") if s.strip()]
-
-        applied = []
-        errors = []
-        for stmt in statements:
-            try:
-                async with _engine.begin() as conn:
-                    await conn.execute(_text(stmt))
-                applied.append(stmt[:60])
-            except Exception as e:
-                errors.append({"stmt": stmt[:60], "error": f"{type(e).__name__}: {e}"})
-        return {"applied": applied, "errors": errors}
 
     @app.get("/ml-status", include_in_schema=False)
     async def ml_status() -> dict:
