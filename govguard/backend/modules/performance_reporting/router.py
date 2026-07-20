@@ -10,16 +10,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth import get_current_user_or_service as get_current_user, UserContext
 from core.db import get_db, set_tenant
 from core.models import Grant, PerformanceReport
-from core.exceptions import GrantNotFound
+from core.exceptions import GrantNotFound, ValidationError
 from core.user_fk import resolve_user_fk
 from modules.performance_reporting.service import expected_quarterly_periods
 
 router = APIRouter()
 
+# 2 CFR 200.415(a) — the exact required certification language.
+CERTIFICATION_TEXT = (
+    "By signing this report, I certify to the best of my knowledge and belief "
+    "that the report is true, complete, and accurate, and the expenditures, "
+    "disbursements and cash receipts are for the purposes and objectives set "
+    "forth in the terms and conditions of the Federal award. I am aware that "
+    "any false, fictitious, or fraudulent information, or the omission of any "
+    "material fact, may subject me to criminal, civil or administrative "
+    "penalties for fraud, false statements, false claims or otherwise "
+    "(18 U.S.C. 1001 and 31 U.S.C. 3729-3730 and 3801-3812)."
+)
+
 
 class ReportSubmit(BaseModel):
     period_label: str
     narrative: Optional[str] = None
+    certification_accepted: bool = False
 
 
 @router.get("/grants/{grant_id}")
@@ -55,6 +68,7 @@ async def list_periods(
             "due_date": p["due_date"].isoformat(),
             "submitted_at": sub.submitted_at.isoformat() if sub and sub.submitted_at else None,
             "narrative": sub.narrative if sub else None,
+            "certification_accepted": sub.certification_accepted if sub else None,
             "status": "submitted" if sub else ("overdue" if overdue else "upcoming"),
         })
     return {"grant_id": str(grant_id), "periods": rows}
@@ -67,6 +81,12 @@ async def submit_report(
     user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if not data.certification_accepted:
+        raise ValidationError(
+            "2 CFR 200.415 requires a signed certification to submit a performance report. "
+            "Set certification_accepted=true to attest to the required statement."
+        )
+
     await set_tenant(db, str(user.tenant_id))
     result = await db.execute(
         select(Grant).where(and_(Grant.id == grant_id, Grant.tenant_id == user.tenant_id))
@@ -95,6 +115,8 @@ async def submit_report(
         existing.submitted_at = now
         existing.submitted_by = submitted_by
         existing.narrative = data.narrative
+        existing.certification_accepted = True
+        existing.certification_text = CERTIFICATION_TEXT
     else:
         existing = PerformanceReport(
             tenant_id=user.tenant_id,
@@ -104,7 +126,13 @@ async def submit_report(
             submitted_at=now,
             submitted_by=submitted_by,
             narrative=data.narrative,
+            certification_accepted=True,
+            certification_text=CERTIFICATION_TEXT,
         )
         db.add(existing)
     await db.commit()
-    return {"period_label": data.period_label, "submitted_at": now.isoformat()}
+    return {
+        "period_label": data.period_label,
+        "submitted_at": now.isoformat(),
+        "certification_accepted": True,
+    }

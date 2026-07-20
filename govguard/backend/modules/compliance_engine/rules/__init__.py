@@ -75,12 +75,34 @@ async def evaluate_subrecipient(code: str, grant, db) -> str:
 
 async def evaluate_reporting(code: str, grant, db) -> str:
     """2 CFR 200.328-329 - Performance reporting. RPT-002 (200.328/329) is
-    backed by real submission tracking against derived quarterly periods."""
+    backed by real submission tracking against derived quarterly periods.
+    RPT-003 (200.415) checks that every submitted report actually carries the
+    required signed certification -- defense in depth behind the hard gate
+    already enforced at submission time in performance_reporting/router.py."""
     if grant is None:
         return "not_applicable"
     if code == "RPT-002":
         from modules.performance_reporting.service import evaluate_reporting_status
         return await evaluate_reporting_status(grant.id, grant.period_start, grant.period_end, db)
+    if code == "RPT-003":
+        from sqlalchemy import text
+        total_result = await db.execute(
+            text("SELECT COUNT(*) FROM performance_reports WHERE grant_id = :gid AND submitted_at IS NOT NULL"),
+            {"gid": str(grant.id)},
+        )
+        if (total_result.scalar() or 0) == 0:
+            return "not_tested"
+        violations_result = await db.execute(
+            text("""
+                SELECT COUNT(*) FROM performance_reports
+                WHERE grant_id = :gid
+                  AND submitted_at IS NOT NULL
+                  AND (certification_accepted IS NOT TRUE OR certification_text IS NULL)
+            """),
+            {"gid": str(grant.id)},
+        )
+        violations = violations_result.scalar() or 0
+        return "fail" if violations > 0 else "pass"
     return "not_tested"
 
 

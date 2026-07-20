@@ -354,6 +354,8 @@ class PerformanceReport(Base):
     submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     submitted_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     narrative: Mapped[Optional[str]] = mapped_column(Text)
+    certification_accepted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    certification_text: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = now_default()
 
 
