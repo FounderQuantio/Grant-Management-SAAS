@@ -67,19 +67,25 @@ async def submit_report(
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant(db, str(user.tenant_id))
-    result = await db.execute(
-        select(Grant).where(and_(Grant.id == grant_id, Grant.tenant_id == user.tenant_id))
-    )
+    try:
+        result = await db.execute(
+            select(Grant).where(and_(Grant.id == grant_id, Grant.tenant_id == user.tenant_id))
+        )
+    except Exception as e:
+        return {"debug_error": f"grant lookup: {type(e).__name__}: {e}"}
     grant = result.scalar_one_or_none()
     if not grant:
         raise GrantNotFound()
 
-    existing_result = await db.execute(
-        select(PerformanceReport).where(and_(
-            PerformanceReport.grant_id == grant_id,
-            PerformanceReport.period_label == data.period_label,
-        ))
-    )
+    try:
+        existing_result = await db.execute(
+            select(PerformanceReport).where(and_(
+                PerformanceReport.grant_id == grant_id,
+                PerformanceReport.period_label == data.period_label,
+            ))
+        )
+    except Exception as e:
+        return {"debug_error": f"existing lookup: {type(e).__name__}: {e}"}
     existing = existing_result.scalar_one_or_none()
     now = datetime.now(timezone.utc)
     if existing:
@@ -97,5 +103,8 @@ async def submit_report(
             narrative=data.narrative,
         )
         db.add(existing)
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as e:
+        return {"debug_error": f"commit: {type(e).__name__}: {e}"}
     return {"period_label": data.period_label, "submitted_at": now.isoformat()}
