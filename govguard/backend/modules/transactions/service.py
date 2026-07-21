@@ -9,6 +9,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cache import cache_get, cache_set, cache_delete_pattern, publish_event
+from core.notify import notify
 from core.exceptions import TransactionNotFound
 from core.models import Transaction, RiskScoreLog
 from modules.transactions.repository import TransactionRepository
@@ -167,15 +168,17 @@ class TransactionService:
             "ts": now_iso,
         })
         if flag_status == "flagged":
-            await publish_event(tenant_id, {
-                "type": "FRAUD_FLAG",
-                "severity": "critical" if fraud_score >= 75 else "warning",
-                "payload": {
+            await notify(
+                self.db, tenant_id,
+                ws_type="FRAUD_FLAG",
+                severity="critical" if fraud_score >= 75 else "warning",
+                title=f"Transaction flagged for review (risk {fraud_score:.0f}/100)",
+                body=f"${data.amount:,.2f} — invoice {data.invoice_ref} — recommended action: {action}",
+                payload={
                     "transaction_id": str(tx.id), "grant_id": str(data.grant_id),
                     "risk_score": float(fraud_score), "action": action,
                 },
-                "ts": now_iso,
-            })
+            )
 
         resp = TransactionResponse.model_validate(tx)
         resp.queued = True
@@ -247,12 +250,14 @@ class TransactionService:
         )
         await cache_delete_pattern(f"kpis:{tenant_id}:*")
         await cache_delete_pattern(f"rs:{tx_id}")
-        await publish_event(tenant_id, {
-            "type": "FRAUD_FLAG" if data.flag_status == "flagged" else "ALERT",
-            "severity": "critical" if data.flag_status == "flagged" else "info",
-            "payload": {"transaction_id": str(tx_id), "flag_status": data.flag_status},
-            "ts": datetime.now(timezone.utc).isoformat(),
-        })
+        await notify(
+            self.db, tenant_id,
+            ws_type="FRAUD_FLAG" if data.flag_status == "flagged" else "ALERT",
+            severity="critical" if data.flag_status == "flagged" else "info",
+            title=f"Transaction marked {data.flag_status}",
+            body=data.justification,
+            payload={"transaction_id": str(tx_id), "flag_status": data.flag_status},
+        )
         return TransactionResponse.model_validate(tx)
 
     async def list_transactions(

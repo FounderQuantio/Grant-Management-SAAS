@@ -383,3 +383,20 @@ class BudgetModificationRequest(Base):
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     review_note: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = now_default()
+
+
+# ── Notifications ────────────────────────────────────────────────────────
+class Notification(Base):
+    __tablename__ = "notifications"
+    __table_args__ = (
+        Index("ix_notifications_tenant_created", "tenant_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = tenant_fk()
+    type: Mapped[str] = mapped_column(String(20), nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    body: Mapped[Optional[str]] = mapped_column(Text)
+    source_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    read_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = now_default()

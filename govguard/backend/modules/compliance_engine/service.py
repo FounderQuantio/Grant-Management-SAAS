@@ -102,17 +102,20 @@ class ComplianceService:
         await self.db.refresh(ctrl)
 
         # Invalidate cache
-        from core.cache import cache_delete_pattern, publish_event
+        from core.cache import cache_delete_pattern
+        from core.notify import notify
         await cache_delete_pattern(f"cs:{ctrl.grant_id}:*")
-        await publish_event(tenant_id, {
-            "type": "COMPLIANCE_CHANGE",
-            "severity": "critical" if data.status == "fail" else "info",
-            "payload": {
+        await notify(
+            self.db, tenant_id,
+            ws_type="COMPLIANCE_CHANGE",
+            severity="critical" if data.status == "fail" else "info",
+            title=f"Compliance control {ctrl.control_code} marked {data.status}",
+            body=data.evidence_note,
+            payload={
                 "control_id": str(ctrl.id), "control_code": ctrl.control_code,
                 "grant_id": str(ctrl.grant_id), "status": data.status,
             },
-            "ts": now.isoformat(),
-        })
+        )
         return ControlResponse.model_validate(ctrl)
 
     async def run_compliance_check(

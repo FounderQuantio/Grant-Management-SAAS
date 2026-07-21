@@ -29,6 +29,7 @@ from modules.webhooks.router import router as webhooks_router
 from modules.downloads.router import router as downloads_router
 from modules.performance_reporting.router import router as perf_reporting_router
 from modules.budget_modifications.router import router as budget_mods_router
+from modules.notifications.router import router as notifications_router
 
 log = structlog.get_logger()
 
@@ -179,6 +180,7 @@ def create_app() -> FastAPI:
     app.include_router(downloads_router,     prefix=f"{PREFIX}/downloads",    tags=["Downloads"])
     app.include_router(perf_reporting_router, prefix=f"{PREFIX}/reporting",    tags=["Reporting"])
     app.include_router(budget_mods_router,   prefix=f"{PREFIX}/budget-modifications", tags=["BudgetModifications"])
+    app.include_router(notifications_router, prefix=f"{PREFIX}/notifications", tags=["Notifications"])
 
     # GovGuard v2 — Add-on modules (do NOT modify anything above this line)
     from api.routes.v2.routes import router as v2_router
