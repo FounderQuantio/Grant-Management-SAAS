@@ -61,13 +61,14 @@ async def get_ws_token(
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str, tenant_id: str):
-    """Real-time alert feed via WebSocket."""
-    from core.cache import cache_get
+    """Real-time alert feed via WebSocket. Forwards ALERT/KPI_UPDATE/
+    COMPLIANCE_CHANGE/FRAUD_FLAG events published (see core.cache.publish_event)
+    on the per-tenant Redis pub/sub channel, alongside a 30s PING heartbeat."""
+    from core.cache import cache_get, redis_client
     import asyncio
     import json
 
     # Validate WS token (skip if Redis unavailable)
-    from core.cache import redis_client
     if redis_client is not None:
         ctx = await cache_get(f"wst:{token}")
         if not ctx or ctx.get("tenant_id") != tenant_id:
@@ -75,17 +76,44 @@ async def websocket_endpoint(websocket: WebSocket, token: str, tenant_id: str):
             return
 
     await websocket.accept()
-    try:
+    send_lock = asyncio.Lock()
+
+    async def heartbeat():
         ping_count = 0
         while True:
-            # Heartbeat every 30s
             await asyncio.sleep(30)
             ping_count += 1
-            await websocket.send_text(json.dumps({"type": "PING", "count": ping_count}))
-            try:
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
-            except asyncio.TimeoutError:
-                await websocket.close(code=4000)
-                break
-    except WebSocketDisconnect:
-        pass
+            async with send_lock:
+                await websocket.send_text(json.dumps({"type": "PING", "count": ping_count}))
+            await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+
+    async def event_listener():
+        if redis_client is None:
+            await asyncio.Event().wait()  # No pub/sub available; heartbeat-only connection.
+            return
+        channel = f"events:{tenant_id}"
+        pubsub = redis_client.pubsub()
+        await pubsub.subscribe(channel)
+        try:
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                async with send_lock:
+                    await websocket.send_text(message["data"])
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.aclose()
+
+    tasks = [asyncio.create_task(heartbeat()), asyncio.create_task(event_listener())]
+    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+    for t in pending:
+        t.cancel()
+    await asyncio.gather(*pending, return_exceptions=True)
+    for t in done:
+        exc = t.exception()  # retrieve to avoid "exception never retrieved" warnings
+        if exc and not isinstance(exc, (WebSocketDisconnect, asyncio.TimeoutError)):
+            raise exc
+    try:
+        await websocket.close()
+    except Exception:
+        pass  # already closed by the client

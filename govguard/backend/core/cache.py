@@ -49,3 +49,12 @@ async def cache_delete_pattern(pattern: str) -> None:
     keys = await redis_client.keys(pattern)
     if keys:
         await redis_client.delete(*keys)
+
+
+async def publish_event(tenant_id: Any, event: dict) -> None:
+    """Publish a dashboard live-feed event (ALERT/KPI_UPDATE/COMPLIANCE_CHANGE/
+    FRAUD_FLAG) to the per-tenant Redis pub/sub channel consumed by the
+    dashboard WebSocket (modules/dashboard/router.py)."""
+    if not redis_client:
+        return
+    await redis_client.publish(f"events:{tenant_id}", json.dumps(event))

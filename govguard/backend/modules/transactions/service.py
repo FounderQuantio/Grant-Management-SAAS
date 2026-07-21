@@ -1,6 +1,6 @@
 """GovGuard™ — Transaction Service"""
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
@@ -8,7 +8,7 @@ from uuid import UUID
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.cache import cache_get, cache_set, cache_delete_pattern
+from core.cache import cache_get, cache_set, cache_delete_pattern, publish_event
 from core.exceptions import TransactionNotFound
 from core.models import Transaction, RiskScoreLog
 from modules.transactions.repository import TransactionRepository
@@ -54,6 +54,11 @@ class TransactionService:
                 f"Duplicate of transaction {dupes[0].id}"
             )
             await cache_delete_pattern(f"kpis:{tenant_id}:*")
+            await publish_event(tenant_id, {
+                "type": "KPI_UPDATE", "severity": "info",
+                "payload": {"grant_id": str(data.grant_id), "reason": "duplicate_suppressed"},
+                "ts": datetime.now(timezone.utc).isoformat(),
+            })
             resp = TransactionResponse.model_validate(tx)
             resp.queued = False
             return resp
@@ -155,6 +160,23 @@ class TransactionService:
         await self.db.commit()
         await cache_delete_pattern(f"kpis:{tenant_id}:*")
 
+        now_iso = datetime.now(timezone.utc).isoformat()
+        await publish_event(tenant_id, {
+            "type": "KPI_UPDATE", "severity": "info",
+            "payload": {"grant_id": str(data.grant_id), "transaction_id": str(tx.id)},
+            "ts": now_iso,
+        })
+        if flag_status == "flagged":
+            await publish_event(tenant_id, {
+                "type": "FRAUD_FLAG",
+                "severity": "critical" if fraud_score >= 75 else "warning",
+                "payload": {
+                    "transaction_id": str(tx.id), "grant_id": str(data.grant_id),
+                    "risk_score": float(fraud_score), "action": action,
+                },
+                "ts": now_iso,
+            })
+
         resp = TransactionResponse.model_validate(tx)
         resp.queued = True
         return resp
@@ -225,6 +247,12 @@ class TransactionService:
         )
         await cache_delete_pattern(f"kpis:{tenant_id}:*")
         await cache_delete_pattern(f"rs:{tx_id}")
+        await publish_event(tenant_id, {
+            "type": "FRAUD_FLAG" if data.flag_status == "flagged" else "ALERT",
+            "severity": "critical" if data.flag_status == "flagged" else "info",
+            "payload": {"transaction_id": str(tx_id), "flag_status": data.flag_status},
+            "ts": datetime.now(timezone.utc).isoformat(),
+        })
         return TransactionResponse.model_validate(tx)
 
     async def list_transactions(

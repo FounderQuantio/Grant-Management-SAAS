@@ -96,13 +96,23 @@ class ComplianceService:
         if data.evidence_note:
             ctrl.remediation_note = data.evidence_note
         from datetime import datetime, timezone
-        ctrl.last_tested = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        ctrl.last_tested = now
         await self.db.commit()
         await self.db.refresh(ctrl)
 
         # Invalidate cache
-        from core.cache import cache_delete_pattern
+        from core.cache import cache_delete_pattern, publish_event
         await cache_delete_pattern(f"cs:{ctrl.grant_id}:*")
+        await publish_event(tenant_id, {
+            "type": "COMPLIANCE_CHANGE",
+            "severity": "critical" if data.status == "fail" else "info",
+            "payload": {
+                "control_id": str(ctrl.id), "control_code": ctrl.control_code,
+                "grant_id": str(ctrl.grant_id), "status": data.status,
+            },
+            "ts": now.isoformat(),
+        })
         return ControlResponse.model_validate(ctrl)
 
     async def run_compliance_check(
