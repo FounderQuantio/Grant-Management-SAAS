@@ -18,6 +18,7 @@ from modules.transactions.schemas import (
     RiskScoreResponse, FraudAssessmentResponse, BulkUploadResponse, TransactionListResponse,
 )
 from services.fraud_detection.engine import FraudDetectionEngine
+from services.fraud_detection.context_signals import get_related_party_flag
 from services.anomaly_detection.processor import AnomalyDetectionProcessor
 
 _fraud_engine = FraudDetectionEngine()
@@ -88,6 +89,7 @@ class TransactionService:
         budget = dict(grant.budget_json) if grant else {data.cost_category: float(data.amount) * 2}
 
         # 4. Run FraudDetectionEngine (synchronous, fast)
+        related_party_flag = await get_related_party_flag(self.db, tenant_id, data.vendor_id)
         assessment = _fraud_engine.assess(
             transaction_id=str(tx.id),
             amount=float(data.amount),
@@ -101,7 +103,7 @@ class TransactionService:
             vendor_spend_30d=spend_30d,
             all_grant_charges=charges,
             vendor_risk_tier=risk_tier_v,
-            related_party_flag=False,
+            related_party_flag=related_party_flag,
         )
 
         await self.repo.create_fraud_assessment(

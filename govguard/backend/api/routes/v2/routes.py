@@ -21,6 +21,7 @@ from core.models import Transaction, Grant, Vendor, FraudAssessmentLog
 
 # v2 services
 from services.fraud_detection.engine import FraudDetectionEngine
+from services.fraud_detection.context_signals import get_all_grant_charges, get_related_party_flag
 from services.anomaly_detection.processor import AnomalyDetectionProcessor
 from services.compliance_monitor.monitor import GrantComplianceMonitor
 from services.entity_intelligence.graph import EntityIntelligenceService
@@ -95,6 +96,9 @@ async def assess_fraud(
     )
     vendor_spend_30d = float(spend_result.scalar() or 0)
 
+    all_grant_charges = await get_all_grant_charges(db, user.tenant_id, row["vendor_id"], row.get("cost_category", ""))
+    related_party_flag = await get_related_party_flag(db, user.tenant_id, row["vendor_id"])
+
     assessment = _fraud_engine.assess(
         transaction_id=str(tx_id),
         amount=float(row["amount"]),
@@ -106,9 +110,9 @@ async def assess_fraud(
         grant_budget=budget,
         prior_invoices=prior_invoices,
         vendor_spend_30d=vendor_spend_30d,
-        all_grant_charges=[],
+        all_grant_charges=all_grant_charges,
         vendor_risk_tier=row.get("risk_tier", "medium"),
-        related_party_flag=False,
+        related_party_flag=related_party_flag,
     )
 
     # Auto-execute internal controls
@@ -761,6 +765,8 @@ async def bulk_fraud_scan(
                 continue
             grant_obj = await db.get(Grant, row["grant_id"])
             budget = grant_obj.budget_json if grant_obj else {}
+            all_grant_charges = await get_all_grant_charges(db, user.tenant_id, row["vendor_id"], row.get("cost_category", ""))
+            related_party_flag = await get_related_party_flag(db, user.tenant_id, row["vendor_id"])
             assessment = _fraud_engine.assess(
                 transaction_id=tx_id,
                 amount=float(row["amount"]),
@@ -772,9 +778,9 @@ async def bulk_fraud_scan(
                 grant_budget=budget,
                 prior_invoices=[],
                 vendor_spend_30d=0,
-                all_grant_charges=[],
+                all_grant_charges=all_grant_charges,
                 vendor_risk_tier=row.get("risk_tier", "medium"),
-                related_party_flag=False,
+                related_party_flag=related_party_flag,
             )
             flag_map = {"BLOCK": "flagged", "HOLD": "flagged", "REVIEW": "flagged", "APPROVE": "clear"}
             new_status = flag_map.get(assessment.recommended_action, "pending")
