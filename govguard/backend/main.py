@@ -13,6 +13,7 @@ from core.db import init_db, close_db
 from core.cache import init_redis, close_redis
 from core.exceptions import GovGuardException
 from core.middleware import TenantMiddleware, RateLimitMiddleware, AuditLogMiddleware, RequestIDMiddleware
+import core.auth as core_auth
 
 from modules.auth.router import router as auth_router
 from modules.tenants.router import router as tenants_router
@@ -162,6 +163,28 @@ def create_app() -> FastAPI:
         except Exception as e:
             result["drift_monitor"] = f"FAILED: {e}"
         return result
+
+    @app.post("/api/v1/diag/cleanup-test-tx", include_in_schema=False)
+    async def cleanup_test_tx(user=core_auth.RequireSystemAdmin) -> dict:
+        """TEMPORARY — deletes the orphaned test transaction (invoice_ref
+        TEST-FDE012-VERIFY) left by FDE-011/012 verification testing, plus
+        any fraud_assessments/risk_score_logs rows referencing it. Remove
+        after use."""
+        from core.db import engine
+        from sqlalchemy import text as sql_text
+
+        results = []
+        async with engine.begin() as conn:
+            tx_result = await conn.execute(
+                sql_text("SELECT id FROM transactions WHERE invoice_ref = 'TEST-FDE012-VERIFY'")
+            )
+            tx_ids = [str(r[0]) for r in tx_result]
+            for tid in tx_ids:
+                await conn.execute(sql_text("DELETE FROM fraud_assessments WHERE transaction_id = :tid"), {"tid": tid})
+                await conn.execute(sql_text("DELETE FROM risk_score_logs WHERE transaction_id = :tid"), {"tid": tid})
+                await conn.execute(sql_text("DELETE FROM transactions WHERE id = :tid"), {"tid": tid})
+                results.append(tid)
+        return {"deleted_transaction_ids": results}
 
     PREFIX = "/api/v1"
     app.include_router(auth_router,         prefix=f"{PREFIX}/auth",         tags=["Auth"])
