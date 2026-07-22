@@ -123,7 +123,7 @@ class TransactionService:
             "amount": float(data.amount), "tx_date": data.tx_date,
             "vendor_id": str(data.vendor_id), "cost_category": data.cost_category,
         }
-        anomaly_alerts = _anomaly_processor.detect(
+        anomaly_alerts, _anomaly_meta = _anomaly_processor.detect(
             grant_id=str(data.grant_id),
             tenant_id=str(tenant_id),
             current_tx=current_tx_dict,
