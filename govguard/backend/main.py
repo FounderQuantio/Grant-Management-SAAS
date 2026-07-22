@@ -166,9 +166,9 @@ def create_app() -> FastAPI:
 
     @app.post("/api/v1/diag/cleanup-test-tx", include_in_schema=False)
     async def cleanup_test_tx(user=core_auth.RequireSystemAdmin) -> dict:
-        """TEMPORARY — deletes the orphaned test transaction (invoice_ref
-        TEST-FDE012-VERIFY) left by FDE-011/012 verification testing, plus
-        any fraud_assessments/risk_score_logs rows referencing it. Remove
+        """TEMPORARY — deletes any orphaned test transactions (invoice_ref
+        LIKE 'TEST-%') left by FDE-011/012 verification testing, plus any
+        fraud_assessments/risk_score_logs rows referencing them. Remove
         after use."""
         from core.db import engine
         from sqlalchemy import text as sql_text
@@ -176,7 +176,7 @@ def create_app() -> FastAPI:
         results = []
         async with engine.begin() as conn:
             tx_result = await conn.execute(
-                sql_text("SELECT id FROM transactions WHERE invoice_ref = 'TEST-FDE012-VERIFY'")
+                sql_text("SELECT id FROM transactions WHERE invoice_ref LIKE 'TEST-%'")
             )
             tx_ids = [str(r[0]) for r in tx_result]
             for tid in tx_ids:
